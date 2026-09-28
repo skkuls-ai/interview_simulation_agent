@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "session_id": "session_test",
+  "question_id": "question_01",
+  "answer_id": "answer_01",
+  "transcript": {
+    "text": "프로젝트에서 API 서버를 구현했습니다.",
+    "duration_seconds": 20.0
+  },
+  "audio": {
+    "eojeol_count": 5,
+    "speech_rate": 15.0
+  },
+  "visual": null,
+  "quality": {
+    "audio_available": true,
+    "visual_available": false
+  },
+  "warnings": [
+    "visual_unavailable"
+  ]
+}
+
