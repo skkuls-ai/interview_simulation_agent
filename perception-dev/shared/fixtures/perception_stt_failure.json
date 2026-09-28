@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "session_id": "session_test",
+  "question_id": "question_01",
+  "answer_id": "answer_01",
+  "transcript": {
+    "text": "",
+    "duration_seconds": 20.0
+  },
+  "audio": {
+    "eojeol_count": 0,
+    "speech_rate": 0.0
+  },
+  "visual": {
+    "face_detection_ratio": 0.91,
+    "camera_gaze_ratio": 0.74,
+    "expression_variance": 0.09
+  },
+  "quality": {
+    "audio_available": false,
+    "visual_available": true
+  },
+  "warnings": [
+    "stt_failed"
+  ]
+}
