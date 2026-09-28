@@ -1,0 +1,393 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "QuestionBank",
+  "$defs": {
+    "Category": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "title": "Code",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "competencies": {
+          "items": {
+            "$ref": "#/$defs/Competency"
+          },
+          "minItems": 1,
+          "title": "Competencies",
+          "type": "array"
+        }
+      },
+      "required": [
+        "code",
+        "name",
+        "competencies"
+      ],
+      "title": "Category",
+      "type": "object"
+    },
+    "Checkpoint": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "예: Q001-P1 (Positive), Q001-N1 (Negative). 평가 근거 인용 시 이 ID 를 씀",
+          "pattern": "^Q\\d{3}-[PN]\\d+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "title": "Checkpoint",
+      "type": "object"
+    },
+    "Checkpoints": {
+      "additionalProperties": false,
+      "properties": {
+        "positive": {
+          "description": "높은 점수의 행동 지표",
+          "items": {
+            "$ref": "#/$defs/Checkpoint"
+          },
+          "minItems": 1,
+          "title": "Positive",
+          "type": "array"
+        },
+        "negative": {
+          "description": "낮은 점수의 행동 지표",
+          "items": {
+            "$ref": "#/$defs/Checkpoint"
+          },
+          "minItems": 1,
+          "title": "Negative",
+          "type": "array"
+        }
+      },
+      "required": [
+        "positive",
+        "negative"
+      ],
+      "title": "Checkpoints",
+      "type": "object"
+    },
+    "Competency": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "title": "Code",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "description": {
+          "description": "소분류 설명 (역량 정의)",
+          "title": "Description",
+          "type": "string"
+        },
+        "question_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Question Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "code",
+        "name",
+        "description",
+        "question_ids"
+      ],
+      "title": "Competency",
+      "type": "object"
+    },
+    "FollowUp": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "예: Q001-F1",
+          "pattern": "^Q\\d{3}-F\\d+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "order": {
+          "description": "원본 번호",
+          "minimum": 1,
+          "title": "Order",
+          "type": "integer"
+        },
+        "text": {
+          "description": "면접관이 실제로 말할 문장 (괄호 표기 제거, 공백 정리)",
+          "title": "Text",
+          "type": "string"
+        },
+        "kind": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FollowUpKind"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "괄호 표기가 있을 때만 값이 있음. 없으면 일반 꼬리질문"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "괄호 안의 원문. kind=condition 이면 사용 조건, role_play 면 면접관이 맡을 역할",
+          "title": "Note"
+        },
+        "raw_text": {
+          "description": "엑셀 원문 그대로 (번호만 제거)",
+          "title": "Raw Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "order",
+        "text",
+        "raw_text"
+      ],
+      "title": "FollowUp",
+      "type": "object"
+    },
+    "FollowUpKind": {
+      "description": "원본 추가 질문 앞의 괄호 표기를 분류한 값.",
+      "enum": [
+        "condition",
+        "pressure",
+        "role_play"
+      ],
+      "title": "FollowUpKind",
+      "type": "string"
+    },
+    "Intent": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "예: Q001-I1",
+          "pattern": "^Q\\d{3}-I\\d+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "text": {
+          "description": "질문 의도. 평가 에이전트가 무엇을 확인해야 하는지",
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "title": "Intent",
+      "type": "object"
+    },
+    "Question": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "예: Q001",
+          "pattern": "^Q\\d{3}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "no": {
+          "description": "엑셀 원본 No",
+          "minimum": 1,
+          "title": "No",
+          "type": "integer"
+        },
+        "category_code": {
+          "description": "대분류 코드. 예: performance",
+          "title": "Category Code",
+          "type": "string"
+        },
+        "category_name": {
+          "description": "대분류 이름. 예: 성과역량",
+          "title": "Category Name",
+          "type": "string"
+        },
+        "competency_code": {
+          "description": "소분류 코드. 예: positivity",
+          "title": "Competency Code",
+          "type": "string"
+        },
+        "competency_name": {
+          "description": "소분류 이름. 예: 긍정성",
+          "title": "Competency Name",
+          "type": "string"
+        },
+        "question_type": {
+          "$ref": "#/$defs/QuestionType"
+        },
+        "question_type_label": {
+          "enum": [
+            "경험면접",
+            "상황면접"
+          ],
+          "title": "Question Type Label",
+          "type": "string"
+        },
+        "text": {
+          "description": "메인 질문 (면접관이 읽는 문장)",
+          "title": "Text",
+          "type": "string"
+        },
+        "fallback_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "원문의 '(답변하지 못할 경우) …' 안내. 지원자가 경험이 없다고 할 때만 사용",
+          "title": "Fallback Text"
+        },
+        "duplicate_of": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "원본 엑셀에서 질문, 의도, 체크포인트가 모두 같은 앞 문항 ID. 문항 선정에서 제외",
+          "title": "Duplicate Of"
+        },
+        "follow_ups_shared_with": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "추가 질문 목록을 다른 문항과 공유할 때 그 문항 ID. 사용은 하되, 꼬리질문 판단 에이전트가 이 문항의 맥락에 맞는 것만 고름 (예: 팀 과제 전제 질문은 상황면접에 맞지 않음)",
+          "title": "Follow Ups Shared With"
+        },
+        "follow_ups": {
+          "description": "원본 추가 질문 (꼬리질문 후보)",
+          "items": {
+            "$ref": "#/$defs/FollowUp"
+          },
+          "minItems": 1,
+          "title": "Follow Ups",
+          "type": "array"
+        },
+        "intents": {
+          "items": {
+            "$ref": "#/$defs/Intent"
+          },
+          "minItems": 1,
+          "title": "Intents",
+          "type": "array"
+        },
+        "checkpoints": {
+          "$ref": "#/$defs/Checkpoints"
+        }
+      },
+      "required": [
+        "id",
+        "no",
+        "category_code",
+        "category_name",
+        "competency_code",
+        "competency_name",
+        "question_type",
+        "question_type_label",
+        "text",
+        "follow_ups",
+        "intents",
+        "checkpoints"
+      ],
+      "title": "Question",
+      "type": "object"
+    },
+    "QuestionType": {
+      "description": "질문 유형. 꼬리질문 전략이 유형별로 달라집니다.",
+      "enum": [
+        "behavioral",
+        "situational"
+      ],
+      "title": "QuestionType",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "default": "1.1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_file": {
+      "title": "Source File",
+      "type": "string"
+    },
+    "source_sha256": {
+      "description": "원본 엑셀 해시. 원본이 바뀌었는지 확인용",
+      "title": "Source Sha256",
+      "type": "string"
+    },
+    "categories": {
+      "items": {
+        "$ref": "#/$defs/Category"
+      },
+      "title": "Categories",
+      "type": "array"
+    },
+    "questions": {
+      "items": {
+        "$ref": "#/$defs/Question"
+      },
+      "title": "Questions",
+      "type": "array"
+    },
+    "quality_warnings": {
+      "description": "원본 데이터 점검 결과",
+      "items": {
+        "type": "string"
+      },
+      "title": "Quality Warnings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "source_file",
+    "source_sha256",
+    "categories",
+    "questions"
+  ],
+  "type": "object"
+}
