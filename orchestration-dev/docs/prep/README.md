@@ -8,7 +8,7 @@
 | STEP | 내용 | 상태 | 문서 |
 |---|---|---|---|
 | 0 | 환경 준비, 작업 범위 확인, 스텁 기준선 측정 | ✅ 완료 | [00_STEP0_환경_기준선.md](00_STEP0_환경_기준선.md) |
-| 1 | 데모 샘플(공고·이력서·자소서)과 정답 라벨 | ✅ 완료 | [01_STEP1_데모_샘플.md](01_STEP1_데모_샘플.md) |
+| 1 | 데모 샘플과 정답 라벨 (**9/29 docs 기준 v2로 수정:** 서류 4종, 20% 시나리오, `sample_inputs.json`) | ✅ 완료 | [01_STEP1_데모_샘플.md](01_STEP1_데모_샘플.md) |
 | 2 | `analyze_jd`, `analyze_experiences` LLM 구현 | ✅ 완료 | [02_STEP2_JD_경험_분석.md](02_STEP2_JD_경험_분석.md) |
 | 3 | `link`, `verification_points` LLM 구현 | ⏳ 다음 | |
 | 4 | `personalize`, `validate_question` LLM 구현 | ☐ (담당 5와 범위 정리 필요) | |

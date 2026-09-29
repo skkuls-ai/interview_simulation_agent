@@ -5,8 +5,9 @@
 
 pytest 에 넣지 않은 이유: 실제 API 를 호출해 시간과 할당량을 씁니다.
 결과: 추출 결과, 코드 안전장치가 버린 항목(issues), 호출 시간을 출력하고 var/eval/ 에 JSON 으로 남깁니다.
-또 정답 라벨(expected_points.json)의 서류 인용이 경험의 주장 구절로 잡혔는지 미리 확인합니다
-(검증 포인트 자체는 STEP 3 에서 만듭니다).
+또 정답 라벨(expected_points.json)의 주장이 경험의 주장 구절로 잡혔는지 미리 확인합니다
+(검증 포인트·요구사항 공백 채점은 STEP 3 에서 합니다).
+입력은 docs 기준 서류 4종(이력서, 채용공고, 직무기술서, 자기소개서)입니다.
 """
 
 from __future__ import annotations
@@ -41,7 +42,13 @@ def main() -> None:
     settings = LLMSettings.from_env()
     agents = LLMAnalysisAgents(GeminiClient(settings), QuestionBank.load(str(ROOT / "backend/question_bank/question_bank.json")))
 
-    jd, resume, cover = [(DEMO / f"{n}.txt").read_text(encoding="utf-8") for n in ("jd", "resume", "cover_letter")]
+    posting, description, resume, cover = [
+        (DEMO / f"{n}.txt").read_text(encoding="utf-8")
+        for n in ("job_posting", "job_description", "resume", "cover_letter")
+    ]
+    # 현재 analyze_jd 인터페이스(담당 3의 이전 구조)는 공고 텍스트 하나만 받으므로 두 문서를 이어 붙입니다.
+    # docs/04 계약으로 옮기면 채용공고·직무기술서를 따로 넘기고 Requirement.source_doc 으로 구분합니다.
+    jd = f"[채용공고]\n{posting}\n\n[직무기술서]\n{description}"
     labels = json.loads((DEMO / "expected_points.json").read_text(encoding="utf-8"))
 
     print(f"모델: {settings.role('analysis').model} (vertex={settings.use_vertex})\n")
@@ -73,27 +80,22 @@ def main() -> None:
         for msg in issues:
             print(f"  - {msg}")
 
-    # 정답 라벨의 서류 인용이 경험의 주장 구절로 잡혔는지 (서로 포함 관계면 잡힌 것으로 봄).
-    # JD 공백 라벨(L8, L9)은 요구사항 요약에 인용이 남지 않아 여기서는 사람이 위 목록으로 확인합니다.
-    print("\n=== 정답 라벨 미리보기 (STEP 3 전 사전 점검)")
+    # 정답 라벨의 주장(expected_claims)이 주장 구절로 잡혔는지 (서로 포함 관계면 잡힌 것으로 봄).
+    # 검증 포인트(CP)와 요구사항 공백(G)은 STEP 3 에서 채점합니다. 공백 라벨은 위 요구사항 목록으로 사람이 확인합니다.
+    print("\n=== 정답 라벨 미리보기: 주장 포착 (검증 포인트·공백 채점은 STEP 3)")
     claims: dict[str, list[str]] = {"resume": [], "cover_letter": []}
     for e in exps:
         claims[e.source].extend(e.claimed_results)
-    hit = total = 0
-    for lab in labels["labels"]:
-        doc_sources = [s for s in lab["sources"] if s["doc"] != "jd"]
-        if not doc_sources:
-            print(f"  ·  {lab['label_id']} {lab['claim_type']:16} (JD 공백: 요구사항 목록에서 확인) {lab['sources'][0]['quote']}")
-            continue
-        found = [
-            any(find_quote(s["quote"], c, min_chars=4) or find_quote(c, s["quote"], min_chars=4) for c in claims[s["doc"]])
-            for s in doc_sources
-        ]
-        total += 1
-        hit += all(found)
-        mark = "✅" if all(found) else ("◐" if any(found) else "✗")
-        print(f"  {mark} {lab['label_id']} {lab['claim_type']:16} {' / '.join(s['quote'] for s in doc_sources)}")
-    print(f"  → 서류 라벨 {total}개 중 주장 구절로 모두 잡힌 것 {hit}개")
+    hit = 0
+    for lab in labels["expected_claims"]:
+        ok = any(find_quote(lab["quote"], c, min_chars=4) or find_quote(c, lab["quote"], min_chars=4)
+                 for c in claims[lab["source_doc"]])
+        hit += ok
+        print(f"  {'✅' if ok else '✗'} {lab['label_id']:4} {'/'.join(lab['types']):15} [{lab['source_doc']}] {lab['quote']}")
+    print(f"  → 주장 {len(labels['expected_claims'])}개 중 {hit}개 포착")
+    print("\n=== 요구사항 공백 라벨 (요구사항 목록에 있는지 사람이 확인)")
+    for g in labels["expected_gaps"]:
+        print(f"  ·  {g['label_id']} [{g['source_doc']}] {g['quote']}")
     print(f"\n전체 소요 {wall:.1f}초 (두 분석 동시 실행)")
 
     out = ROOT / "var" / "eval" / f"prep_smoke_{datetime.now():%Y%m%d_%H%M%S}.json"

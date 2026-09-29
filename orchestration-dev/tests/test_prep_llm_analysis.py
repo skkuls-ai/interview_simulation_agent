@@ -20,7 +20,7 @@ from backend.llm.client import CallInfo, LLMError
 from tests.conftest import BANK
 
 DEMO = Path(__file__).parents[1] / "data" / "demo"
-JD = (DEMO / "jd.txt").read_text(encoding="utf-8")
+JD = (DEMO / "job_posting.txt").read_text(encoding="utf-8")
 RESUME = (DEMO / "resume.txt").read_text(encoding="utf-8")
 COVER = (DEMO / "cover_letter.txt").read_text(encoding="utf-8")
 
@@ -116,14 +116,14 @@ def test_experiences_keep_documents_separate_and_quotes_verbatim():
         exp("resume", "레시피 RAG 챗봇", "레시피 RAG 챗봇 (2026.09, 4인 팀)",
             claims=["만개의레시피 데이터 1,000개를 크롤링·전처리해"], codes=["information_management"]),
         exp("cover_letter", "레시피 RAG 챗봇", "첫 프로젝트인 레시피 RAG 챗봇에서는",
-            claims=["약 5,000개의 레시피 데이터를 수집해", "검색 정확도를 30% 개선했습니다"]),
+            claims=["약 5,000개의 레시피 데이터를 수집해", "검색 정확도를 20% 개선했습니다"]),
     ]}})
     exps = a.analyze_experiences(RESUME, COVER)
 
     assert [(e.id, e.source) for e in exps] == [("E1", "resume"), ("E2", "cover_letter")]
     # 두 서류의 숫자가 다르면 합치지 않고 각각 남깁니다 (서류 간 불일치를 다음 단계에서 찾을 수 있도록)
     assert exps[0].claimed_results == ["만개의레시피 데이터 1,000개를 크롤링·전처리해"]
-    assert exps[1].claimed_results == ["약 5,000개의 레시피 데이터를 수집해", "검색 정확도를 30% 개선했습니다"]
+    assert exps[1].claimed_results == ["약 5,000개의 레시피 데이터를 수집해", "검색 정확도를 20% 개선했습니다"]
 
 
 def test_experiences_drop_changed_or_invented_claims():

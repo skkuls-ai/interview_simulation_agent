@@ -1,119 +1,109 @@
 {
-  "sample_id": "demo-01",
-  "description": "데모 샘플에 일부러 심은 검증 포인트의 정답 라벨. 결과를 보기 전에 확정하며, 결과를 본 뒤 기준을 바꾸지 않는다.",
-  "claim_types": ["metric", "role", "technology", "result", "decision", "consistency", "requirement_gap"],
-  "matching_rule": "분석 결과의 검증 포인트가 라벨의 quote 중 하나와 같은 문장을 가리키고(인용이 서로 포함 관계), 우려(concern)가 라벨의 핵심 우려와 같은 방향이면 탐지로 본다.",
-  "labels": [
+  "sample_id": "demo-02",
+  "description": "데모 샘플의 서류 분석 정답 라벨 (docs/04 Analysis 계약 기준). 결과를 보기 전에 확정하며, 결과를 본 뒤 기준을 바꾸지 않는다.",
+  "contract": "docs/04-api-schema.md 의 Requirement / Claim / Checkpoint / RequirementLink",
+  "claim_types": ["METRIC", "ROLE", "TECH", "PROBLEM", "DECISION", "COLLAB", "MEASURE"],
+  "requirement_kinds": ["SKILL", "DUTY", "TALENT"],
+  "matching_rule": "분석 결과의 Claim.text 가 라벨 quote 와 서로 포함 관계면 같은 주장으로 본다. Checkpoint 는 라벨의 claim 들 중 하나 이상을 참조하고 확인할 내용이 같은 방향이면 탐지로 본다. 요구사항 공백은 해당 Requirement 의 RequirementLink.claim_ids 가 비어 있으면 탐지로 본다.",
+
+  "demo_scenario": {
+    "central_claim": "RAG 검색 정확도를 20% 개선 (이력서·자소서 모두 등장)",
+    "linked_questions": ["Q-1", "Q-4"],
+    "label_ids": ["C1", "C2", "CP1"],
+    "note": "docs 의 고정 데모 시나리오. Q-1 자기소개와 Q-4 기술 질문의 연결 정보에 이 주장과 검증 포인트가 표시되어야 한다."
+  },
+
+  "expected_claims": [
+    {"label_id": "C1", "source_doc": "cover_letter", "quote": "검색 정확도를 20% 개선했습니다", "types": ["METRIC"], "priority": "high"},
+    {"label_id": "C2", "source_doc": "resume", "quote": "검색 정확도 20% 개선", "types": ["METRIC"], "priority": "high"},
+    {"label_id": "C3", "source_doc": "resume", "quote": "만개의레시피 데이터 1,000개를 크롤링·전처리해", "types": ["METRIC"], "priority": "high"},
+    {"label_id": "C4", "source_doc": "cover_letter", "quote": "약 5,000개의 레시피 데이터를 수집해", "types": ["METRIC"], "priority": "high"},
+    {"label_id": "C5", "source_doc": "cover_letter", "quote": "사용자 이탈을 절반 이하로 줄였습니다", "types": ["METRIC", "PROBLEM"], "priority": "high"},
+    {"label_id": "C6", "source_doc": "cover_letter", "quote": "프로젝트를 주도했습니다", "types": ["ROLE"], "priority": "medium"},
+    {"label_id": "C7", "source_doc": "resume", "quote": "4인 팀, 팀 리드", "types": ["ROLE"], "priority": "medium"},
+    {"label_id": "C8", "source_doc": "cover_letter", "quote": "LangGraph의 Send로 문항 수만큼 Writer를 병렬 실행하는 멀티 에이전트 구조를 설계했습니다", "types": ["TECH"], "priority": "medium"},
+    {"label_id": "C9", "source_doc": "cover_letter", "quote": "지식 그래프와 벡터 검색을 결합하기로 결정했습니다", "types": ["DECISION"], "priority": "medium"},
+    {"label_id": "C10", "source_doc": "cover_letter", "quote": "Pydantic 스키마로 에이전트 간 데이터 형식을 먼저 합의하자고 제안했고", "types": ["COLLAB"], "priority": "medium"},
+    {"label_id": "C11", "source_doc": "cover_letter", "quote": "통합 오류가 크게 줄었습니다", "types": ["PROBLEM"], "priority": "low"}
+  ],
+
+  "expected_checkpoints": [
     {
-      "label_id": "L1",
-      "claim_type": "metric",
-      "priority": "high",
-      "sources": [
-        {"doc": "cover_letter", "quote": "검색 정확도를 30% 개선했습니다"}
-      ],
-      "concern": "정확도의 정의, 평가 데이터, 측정 방법, 개선 전후 기준이 없다.",
+      "label_id": "CP1", "claim_label_ids": ["C1", "C2"], "priority": "high",
+      "title": "검색 정확도 측정 기준",
+      "what_to_verify": "정확도의 정의, 평가 데이터, 측정 방법, 개선 전후 값이 서류에 없다 (MEASURE 부재).",
       "expected_probe": "검색 정확도를 어떤 평가 데이터와 지표로 측정했고, 개선 전후 값은 얼마였나요?"
     },
     {
-      "label_id": "L2",
-      "claim_type": "consistency",
-      "priority": "high",
-      "sources": [
-        {"doc": "resume", "quote": "만개의레시피 데이터 1,000개를 크롤링·전처리해"},
-        {"doc": "cover_letter", "quote": "약 5,000개의 레시피 데이터를 수집해"}
-      ],
-      "concern": "같은 프로젝트의 데이터 규모가 이력서(1,000개)와 자소서(약 5,000개)에서 다르다.",
-      "expected_probe": "이력서에는 1,000개, 자소서에는 약 5,000개로 되어 있는데, 실제로 수집한 레시피 수는 몇 개였나요?"
+      "label_id": "CP2", "claim_label_ids": ["C3", "C4"], "priority": "high",
+      "title": "레시피 데이터 규모 불일치",
+      "what_to_verify": "같은 프로젝트의 데이터 규모가 이력서(1,000개)와 자소서(약 5,000개)에서 다르다.",
+      "expected_probe": "이력서에는 1,000개, 자소서에는 약 5,000개로 되어 있는데 실제 수집한 레시피는 몇 개였나요?"
     },
     {
-      "label_id": "L3",
-      "claim_type": "result",
-      "priority": "high",
-      "sources": [
-        {"doc": "cover_letter", "quote": "사용자 이탈을 절반 이하로 줄였습니다"}
-      ],
-      "concern": "교육과정 프로젝트에서 사용자 이탈을 어떻게 측정했는지, 비동기 구조와의 인과관계가 불분명하다.",
-      "expected_probe": "사용자 이탈을 어떤 데이터로 측정했고, 비동기 구조 전환이 원인이라고 판단한 근거는 무엇인가요?"
+      "label_id": "CP3", "claim_label_ids": ["C5"], "priority": "high",
+      "title": "사용자 이탈 측정과 인과",
+      "what_to_verify": "교육과정 프로젝트에서 사용자 이탈을 어떻게 측정했는지, 비동기 구조 전환이 원인인지 불분명하다.",
+      "expected_probe": "사용자 이탈을 어떤 데이터로 측정했고, 비동기 구조가 원인이라고 판단한 근거는 무엇인가요?"
     },
     {
-      "label_id": "L4",
-      "claim_type": "role",
-      "priority": "medium",
-      "sources": [
-        {"doc": "cover_letter", "quote": "프로젝트를 주도했습니다"},
-        {"doc": "resume", "quote": "4인 팀, 팀 리드"}
-      ],
-      "concern": "'주도'와 '팀 리드'가 구체적으로 어떤 의사결정과 행동이었는지 알 수 없다.",
+      "label_id": "CP4", "claim_label_ids": ["C6", "C7"], "priority": "medium",
+      "title": "주도한 역할의 구체 내용",
+      "what_to_verify": "'주도', '팀 리드'가 어떤 결정과 작업이었는지 드러나지 않는다.",
       "expected_probe": "프로젝트를 주도했다고 하셨는데, 본인이 직접 내린 결정과 맡은 작업은 무엇이었나요?"
     },
     {
-      "label_id": "L5",
-      "claim_type": "technology",
-      "priority": "medium",
-      "sources": [
-        {"doc": "cover_letter", "quote": "LangGraph의 Send로 문항 수만큼 Writer를 병렬 실행하는 멀티 에이전트 구조를 설계했습니다"}
-      ],
-      "concern": "Send를 쓴 이유, 병렬 결과를 합치는 방법(reducer), 재작성 시 동작을 설명할 수 있는지 확인이 필요하다.",
-      "expected_probe": "Send로 병렬 실행한 Writer 결과를 어떻게 합쳤고, 일부 문항만 재작성할 때는 어떻게 처리했나요?"
+      "label_id": "CP5", "claim_label_ids": ["C8"], "priority": "medium",
+      "title": "병렬 실행 구조 이해",
+      "what_to_verify": "Send 를 쓴 이유, 병렬 결과를 합치는 방법(reducer), 재작성 처리를 설명할 수 있는지 확인이 필요하다.",
+      "expected_probe": "Send로 병렬 실행한 Writer 결과를 어떻게 합쳤고, 일부 문항만 다시 쓸 때는 어떻게 처리했나요?"
     },
     {
-      "label_id": "L6",
-      "claim_type": "decision",
-      "priority": "medium",
-      "sources": [
-        {"doc": "cover_letter", "quote": "지식 그래프와 벡터 검색을 결합하기로 결정했습니다"}
-      ],
-      "concern": "결합을 선택한 근거, 검토한 대안, '추천 품질을 높였다'는 결과의 확인 방법이 없다.",
-      "expected_probe": "벡터 검색만 쓸 때와 비교해 어떤 문제가 있었고, 그래프를 결합한 효과를 어떻게 확인했나요?"
+      "label_id": "CP6", "claim_label_ids": ["C9"], "priority": "medium",
+      "title": "하이브리드 검색 선택 근거",
+      "what_to_verify": "결합을 선택한 근거, 검토한 대안, '추천 품질을 높였다'는 결과의 확인 방법이 없다.",
+      "expected_probe": "벡터 검색만 쓸 때 어떤 문제가 있었고, 그래프를 결합한 효과는 어떻게 확인했나요?"
     },
     {
-      "label_id": "L7",
-      "claim_type": "result",
-      "priority": "low",
-      "sources": [
-        {"doc": "cover_letter", "quote": "통합 오류가 크게 줄었습니다"}
-      ],
-      "concern": "'크게'가 어느 정도인지, 스키마 합의가 원인인지 모호하다.",
-      "expected_probe": "스키마 합의 전후로 통합 오류가 어떻게 달라졌는지 구체적인 예를 들어 주세요."
-    },
-    {
-      "label_id": "L8",
-      "claim_type": "requirement_gap",
-      "priority": "high",
-      "sources": [
-        {"doc": "jd", "quote": "LLM 응답 품질을 정량적으로 평가하고 모니터링한 경험"}
-      ],
-      "concern": "필수 요건이지만 서류에 모니터링 경험이 없고, 정량 평가는 근거가 불분명한 L1의 '정확도 30%'뿐이다.",
-      "expected_probe": "LLM 응답 품질을 정량적으로 평가하거나 모니터링해 본 경험이 있다면 방법과 지표를 설명해 주세요."
-    },
-    {
-      "label_id": "L9",
-      "claim_type": "requirement_gap",
-      "priority": "low",
-      "sources": [
-        {"doc": "jd", "quote": "Docker 등을 이용한 서비스 배포 경험"}
-      ],
-      "concern": "우대 사항이며 서류에 배포 경험이 없다.",
-      "expected_probe": "만든 서비스를 배포하거나 운영해 본 경험이 있나요?"
+      "label_id": "CP7", "claim_label_ids": ["C10", "C11"], "priority": "low",
+      "title": "스키마 합의 효과",
+      "what_to_verify": "통합 오류가 '크게' 줄었다는 정도와, 스키마 합의가 원인인지 모호하다.",
+      "expected_probe": "스키마 합의 전후로 통합 오류가 어떻게 달라졌는지 예를 들어 주세요."
     }
   ],
-  "negative_labels": [
+
+  "expected_gaps": [
+    {"label_id": "G1", "source_doc": "job_posting", "quote": "LLM 응답 품질을 정량적으로 평가하고 모니터링한 경험", "priority": "high",
+     "note": "채용공고 필수 요건. 서류에 모니터링 경험이 없고, 정량 평가는 측정 근거가 없는 '정확도 20%'(CP1)뿐이다."},
+    {"label_id": "G2", "source_doc": "job_description", "quote": "로그 수집과 응답 품질 모니터링", "priority": "medium",
+     "note": "직무기술서 주요 업무. 서류에 관련 경험이 없다."},
+    {"label_id": "G3", "source_doc": "job_description", "quote": "Docker 기반 서비스 배포와 운영", "priority": "low",
+     "note": "직무기술서 필요 기술. 서류에 배포 경험이 없다."},
+    {"label_id": "G4", "source_doc": "job_description", "quote": "프롬프트 인젝션 등 LLM 서비스 보안 위험", "priority": "low",
+     "note": "직무기술서 필요 지식. 서류에 관련 내용이 없다."}
+  ],
+
+  "expected_talent": [
+    {"label_id": "T1", "source_doc": "job_posting", "quote": "문제를 스스로 정의하고 근거를 바탕으로 해결하는 사람"},
+    {"label_id": "T2", "source_doc": "job_posting", "quote": "동료와 적극적으로 소통하며 결과를 함께 만드는 사람"},
+    {"label_id": "T3", "source_doc": "job_posting", "quote": "새로운 기술을 빠르게 학습해 실무에 적용하는 사람"}
+  ],
+
+  "traps": [
     {
-      "label_id": "N1",
-      "trap": "consistency",
+      "label_id": "N1", "trap": "consistency",
       "sources": [
-        {"doc": "resume", "quote": "4인 팀, 팀 리드"},
-        {"doc": "cover_letter", "quote": "3명의 팀원과 함께"}
+        {"source_doc": "resume", "quote": "4인 팀, 팀 리드"},
+        {"source_doc": "cover_letter", "quote": "3명의 팀원과 함께"}
       ],
-      "note": "본인을 포함하면 4인 팀이므로 모순이 아니다. 이 쌍을 불일치로 판정하면 오탐이다."
+      "note": "본인을 포함하면 4인 팀이므로 모순이 아니다. 이 쌍을 불일치 검증 포인트로 만들면 오탐이다."
     },
     {
-      "label_id": "N2",
-      "trap": "over_flagging",
+      "label_id": "N2", "trap": "over_flagging",
       "sources": [
-        {"doc": "resume", "quote": "Gemini Function Calling으로 검색·상세 조회·연관 레시피 도구 3종 연결"}
+        {"source_doc": "resume", "quote": "Gemini Function Calling으로 검색·상세 조회·연관 레시피 도구 3종 연결"}
       ],
-      "note": "구체적이고 이력서 안에서 일관된 사실 주장이다. 검증 포인트로 잡더라도 high 우선순위면 과잉 탐지다."
+      "note": "구체적이고 서류 안에서 일관된 사실 주장이다. 주장으로 뽑는 것은 괜찮지만 high 우선순위 검증 포인트로 만들면 과잉 탐지다."
     }
   ]
 }
