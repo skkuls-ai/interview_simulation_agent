@@ -9,9 +9,9 @@
 |---|---|---|---|
 | W-05 | `sample_inputs.json` (고정 데모 서류 4종) | 화 밤 | ✅ `data/demo/sample_inputs.json` |
 | W-06 | `session_preparing.json` | 화 밤 | ✅ `data/demo/session_preparing.json` |
-| W-06 | 분석 프롬프트 초안 (새 계약 `Analysis` 기준) | 화 밤 | ⏳ 다음 |
+| W-06 | 분석 프롬프트 초안 (새 계약 `Analysis` 기준) | 화 밤 | ✅ `backend/proof_prep/prompts.py` |
 | W-07 | 화면 1 시작, 화면 2 서류 업로드 (mock) | 화 밤 | ☐ C의 뼈대(W-02, W-11) 대기 |
-| W-15 | 샘플 4종으로 `Analysis` 실제 생성 | 수 저녁 | ☐ |
+| W-15 | 샘플 4종으로 `Analysis` 실제 생성 | 수 저녁 | ✅ 주장 11/11, 검증 포인트 6/7, 요구사항 공백 4/4, 20.4초 → [03 문서](03_W06_W15_새계약_서류분석.md) |
 | W-16 | 화면 1·2 → `POST /api/interviews` 연결 | 수 저녁 | ☐ |
 | W-28 | PDF·DOCX 추출, 입력 예외 처리 | 목 14시 | ☐ |
 
