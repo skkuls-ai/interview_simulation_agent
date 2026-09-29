@@ -3,7 +3,21 @@
 > 브랜치: `feature/interview-prep` (기반: 담당 3의 `feature/orchestration`)
 > 마지막 업데이트: 2026-09-28 밤
 
-## 한눈에 보기
+## docs WBS 기준 담당 A 작업 (9/29~)
+
+| ID | 작업 | 마감 | 상태 |
+|---|---|---|---|
+| W-05 | `sample_inputs.json` (고정 데모 서류 4종) | 화 밤 | ✅ `data/demo/sample_inputs.json` |
+| W-06 | `session_preparing.json` | 화 밤 | ✅ `data/demo/session_preparing.json` |
+| W-06 | 분석 프롬프트 초안 (새 계약 `Analysis` 기준) | 화 밤 | ⏳ 다음 |
+| W-07 | 화면 1 시작, 화면 2 서류 업로드 (mock) | 화 밤 | ☐ C의 뼈대(W-02, W-11) 대기 |
+| W-15 | 샘플 4종으로 `Analysis` 실제 생성 | 수 저녁 | ☐ |
+| W-16 | 화면 1·2 → `POST /api/interviews` 연결 | 수 저녁 | ☐ |
+| W-28 | PDF·DOCX 추출, 입력 예외 처리 | 목 14시 | ☐ |
+
+mock 파일은 C의 저장소 뼈대가 올라오면 `shared/mock/`으로 옮깁니다. 자세한 내용은 [`data/demo/README.md`](../../data/demo/README.md).
+
+## 한눈에 보기 (STEP 기록)
 
 | STEP | 내용 | 상태 | 문서 |
 |---|---|---|---|

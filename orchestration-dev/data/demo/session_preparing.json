@@ -1,0 +1,13 @@
+{
+  "session_id": "S-3f2a9c1e",
+  "status": "PREPARING",
+  "steps": [
+    { "step_id": "read_posting", "label": "채용공고 읽는 중", "state": "DONE", "detail": "요구사항 30개 확인" },
+    { "step_id": "read_resume", "label": "이력서·자소서 읽는 중", "state": "DONE", "detail": "경험 7개, 확인할 주장 11개" },
+    { "step_id": "link", "label": "공고와 경험 연결 중", "state": "RUNNING", "detail": null },
+    { "step_id": "checkpoints", "label": "검증 포인트 찾는 중", "state": "PENDING", "detail": null },
+    { "step_id": "questions", "label": "질문 준비 중", "state": "PENDING", "detail": null },
+    { "step_id": "review", "label": "질문 검수 중", "state": "PENDING", "detail": null }
+  ],
+  "questions": null
+}

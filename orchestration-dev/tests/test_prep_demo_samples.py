@@ -65,6 +65,55 @@ def test_gaps_and_talent_come_from_posting_or_description():
         assert g["source_doc"] in ("job_posting", "job_description"), g["label_id"]
 
 
+# ---------------------------------------------------------------- session_preparing.json (W-06)
+# docs/04 §3.2 GET /api/interviews/{id} 응답 (PREPARING, 단계 진행 중)
+
+PREPARING = json.loads((DEMO / "session_preparing.json").read_text(encoding="utf-8"))
+PREP_STEP_IDS = ["read_posting", "read_resume", "link", "checkpoints", "questions", "review"]
+PREP_LABELS = ["채용공고 읽는 중", "이력서·자소서 읽는 중", "공고와 경험 연결 중",
+               "검증 포인트 찾는 중", "질문 준비 중", "질문 검수 중"]
+
+
+def test_preparing_mock_has_contract_shape():
+    assert set(PREPARING) == {"session_id", "status", "steps", "questions"}
+    assert PREPARING["status"] == "PREPARING"
+    assert PREPARING["questions"] is None  # READY 전에는 null
+    assert PREPARING["session_id"].startswith("S-") and len(PREPARING["session_id"]) == 10
+
+
+def test_preparing_steps_follow_screen3_order_and_labels():
+    steps = PREPARING["steps"]
+    assert [s["step_id"] for s in steps] == PREP_STEP_IDS
+    assert [s["label"] for s in steps] == PREP_LABELS
+    for s in steps:
+        assert set(s) == {"step_id", "label", "state", "detail"}
+        assert s["state"] in ("PENDING", "RUNNING", "DONE")
+
+
+def test_preparing_steps_progress_in_order():
+    # 완료 → 진행 중(최대 1개) → 대기 순서여야 화면 3이 자연스럽게 그려집니다.
+    order = {"DONE": 0, "RUNNING": 1, "PENDING": 2}
+    states = [order[s["state"]] for s in PREPARING["steps"]]
+    assert states == sorted(states)
+    assert states.count(1) <= 1
+
+
+def test_preparing_details_only_on_first_two_done_steps():
+    # 화면 3 정의: 완료 뒤 수치는 1·2단계에만 표시
+    for i, s in enumerate(PREPARING["steps"]):
+        if i < 2 and s["state"] == "DONE":
+            assert s["detail"]
+        else:
+            assert s["detail"] is None
+
+
+def test_preparing_mock_leaks_no_question_content():
+    # 면접 전에는 질문·검증 포인트·평가 기준을 노출하지 않습니다.
+    text = json.dumps(PREPARING, ensure_ascii=False)
+    for word in ("criteria", "checkpoint_id", "claim_id", "question_id", "20%"):
+        assert word not in text
+
+
 def test_demo_scenario_matches_docs():
     # docs 고정 시나리오: 「RAG 검색 정확도를 20% 개선」이 Q-1, Q-4 와 연결
     s = LABELS["demo_scenario"]
