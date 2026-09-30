@@ -1,15 +1,15 @@
 # shared/mock 안내
 
-한 줄 요약: 실제 API가 준비되기 전에 프런트와 백엔드 단위 테스트가 함께 쓰는 고정 데모 JSON 6개와 사용 규칙.
+한 줄 요약: 실제 API가 준비되기 전에 프런트와 백엔드 단위 테스트가 함께 쓰는 고정 데모 JSON 7개와 사용 규칙.
 기준: Claude Docs 2026-09-29 버전 (「개발 계약·담당표」 개발 계약 4)
 
 관련 문서: docs/04-api-schema.md (API·스키마), docs/05-architecture.md (구성), docs/07-dev-rules.md (개발 규칙), docs/08-test-scenarios.md (테스트)
 
 ## 고정 데모 시나리오
 
-- 가상의 신입 지원자(실제 인물·회사 없음), 세션 하나: `session_id = S-3f2a9c1e`
+- 발표 데모 샘플 지원자A(가상의 신입 지원자, 실제 인물·회사 없음), 세션 하나: `session_id = S-3f2a9c1e` (9/30 C 결정)
 - 서류에 「RAG 검색 정확도를 20% 개선」이라는 경험 주장이 있고(CL-001), Q-1(자기소개)과 Q-4(기술) 답변이 이 주장과 연결된다.
-- 채용공고의 우대 사항 LangGraph가 RQ-004이며, 직무 적합성 판정(NEEDS_WORK)의 근거가 된다.
+- 채용공고의 우대 사항 LangGraph가 RQ-004이며, 직무 적합성 판정(NEEDS_WORK)의 근거가 된다. 답변 일관성은 SUFFICIENT(서류와 어긋나는 내용 없음).
 - 질문 5개는 Q-1 INTRO, Q-2 BEHAVIOR, Q-3 BEHAVIOR, Q-4 TECH, Q-5 TECH 고정 순서. Q-3은 1분 30초 초과(timed_out)로 넘어간 사례.
 
 ## 파일별 용도
@@ -21,7 +21,8 @@
 | `session_ready.json` | `GET /api/interviews/{id}` | READY | B | 화면 3 완료 → 4·5. 질문 5개(`question_id`, `order`, `type`, `text`만). 기대 요소·평가 기준·연결 정보는 넣지 않는다. |
 | `answer_accepted.json` | `POST /api/interviews/{id}/answers` | IN_PROGRESS / EVALUATING | C | 응답 두 가지를 한 파일에 담는다. `in_progress` = Q-2 접수(다음 Q-3), `last` = Q-5 접수(`next_question_id`가 null, status가 EVALUATING). HTTP 202. |
 | `session_evaluating.json` | `GET /api/interviews/{id}` | EVALUATING | C | 화면 6 단계 진행 표시(transcribe, attitude, job_fit, consistency, compose). |
-| `report.json` | `GET /api/interviews/{id}/report` | COMPLETED | E | 화면 7 전체. 영역 3개, 질문별 피드백, 화면이 다른 API를 부르지 않도록 `questions`·`claims`·`checkpoints` 동봉. |
+| `report.json` | `GET /api/interviews/{id}/report` | COMPLETED | E | 화면 7 전체. 영역 3개, 질문별 피드백, 화면이 다른 API를 부르지 않도록 `questions`·`requirements`·`claims`·`checkpoints` 동봉. `backend/scripts/build_report_mock.py`로 생성. |
+| `report_edge.json` | `GET /api/interviews/{id}/report` | COMPLETED | E | 화면 7 예외 상태 확인용. Q-3 답변 인식 안 됨(`answer_text` null), 카메라 측정 불가(`gaze.measurable` false), 답변 일관성 WITHHELD. |
 
 `report.json` 안의 인용(`quotes`)은 모두 `questions[].answer_text`에 실제로 있는 문장이며, `start`·`end`는 그 답변 텍스트의 글자 위치다(0부터, `end`는 포함하지 않음, 즉 `answer_text[start:end] == text`). 파이썬으로 검증했다.
 
@@ -43,7 +44,7 @@ VITE_USE_MOCK=false   # 실제 백엔드 사용 (기본)
 
 ## 답변이 인식되지 않은 질문의 응답 예 (NO_SPEECH / FAILED)
 
-`transcript_status`가 `NO_SPEECH`(무음) 또는 `FAILED`(변환 실패)이면 면접은 그대로 진행하고, `POST /answers` 응답은 정상(202)이다. 리포트에서는 해당 질문의 `answer_text`가 null이고 판정에서 빠진다. 화면은 「답변이 기록되지 않았습니다」로 표시한다. 이 사례는 `report.json`에 넣지 않았다.
+`transcript_status`가 `NO_SPEECH`(무음) 또는 `FAILED`(변환 실패)이면 면접은 그대로 진행하고, `POST /answers` 응답은 정상(202)이다. 리포트에서는 해당 질문의 `answer_text`가 null이고 판정에서 빠진다. 화면은 「답변이 기록되지 않았습니다」로 표시한다. 이 사례는 `report_edge.json`의 Q-3에 있다.
 
 ```json
 { "question_id": "Q-2", "type": "BEHAVIOR", "text": "...", "answer_text": null }

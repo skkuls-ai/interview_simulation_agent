@@ -1,0 +1,143 @@
+"""코드 판정 규칙. LLM 출력을 검사해 (정리된 결과, 문제 목록)을 돌려준다.
+
+문제 목록이 비어 있지 않으면 러너가 그 호출만 이유를 넘겨 1회 재평가한다.
+재평가 뒤에도 남은 문제는 finalize_* 가 규칙대로 정리한다 (근거 없는 판정은 WITHHELD 등).
+"""
+
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass, field
+
+from .prompts import AttitudeOut, FitOut, PerQuestionOut, QuestionOut, QuoteRef
+from .quotes import QuoteFinder
+
+# T-013 금지 표현 (임시 목록, B 의 검사가 나오면 교체)
+FORBIDDEN_RE = re.compile(r"합격|불합격|채용 점수|상위 ?\d+ ?%|자신감|진실성|거짓말|긴장|불안")
+MAX_ADVICE = 3
+
+WITHHELD_NO_EVIDENCE = "판단의 근거가 되는 답변 문장을 확인하지 못해 판단을 보류했습니다."
+WITHHELD_TOO_FEW = "판단할 수 있는 답변이 부족해 판단을 보류했습니다."
+WITHHELD_FAILED = "피드백을 만드는 중 문제가 생겨 판단을 보류했습니다."
+
+
+@dataclass
+class Located:
+    question_id: str
+    text: str
+    start: int
+    end: int
+
+
+@dataclass
+class FitResult:
+    verdict: str
+    reason: str
+    quotes: list[Located] = field(default_factory=list)
+    refs: list[str] = field(default_factory=list)
+
+
+@dataclass
+class AttitudeResult:
+    advice: list[str] = field(default_factory=list)
+    quotes: list[Located] = field(default_factory=list)
+
+
+def forbidden(text: str) -> str | None:
+    m = FORBIDDEN_RE.search(text or "")
+    return m.group(0) if m else None
+
+
+def locate(refs: list[QuoteRef], sources: dict[str, str], finder: QuoteFinder) -> tuple[list[Located], list[str]]:
+    """인용마다 답변 원문에서 위치를 다시 찾는다. 없는 인용은 버리고 문제로 기록한다 (T-201, T-202)."""
+    found, issues = [], []
+    for r in refs:
+        src = sources.get(r.question_id)
+        pos = finder(r.text, src) if src is not None else None
+        if pos is None:
+            where = "인식된 답변이 없는 질문" if src is None else "답변 원문"
+            issues.append(f"인용이 {where}에 없음 ({r.question_id}): '{r.text[:40]}'")
+            continue
+        start, end = pos
+        found.append(Located(r.question_id, src[start:end], start, end))
+    return found, issues
+
+
+# ---------------------------------------------------------------- 직무 적합성, 답변 일관성
+
+
+def check_fit(out: FitOut, sources: dict[str, str], allowed_refs: set[str], finder: QuoteFinder) -> tuple[FitResult, list[str]]:
+    quotes, issues = locate(out.quotes, sources, finder)
+    refs = []
+    for ref in out.refs:
+        if ref in allowed_refs:
+            if ref not in refs:
+                refs.append(ref)
+        else:
+            issues.append(f"refs 에 없는 ID: {ref}")  # T-203
+    if word := forbidden(out.reason):
+        issues.append(f"이유 문장에 금지 표현: {word}")
+    if out.verdict != "WITHHELD" and not quotes:
+        issues.append(f"{out.verdict} 판정에 근거 인용이 없음")
+    return FitResult(out.verdict, out.reason, quotes, refs), issues
+
+
+def finalize_fit(r: FitResult) -> FitResult:
+    if forbidden(r.reason):
+        return FitResult("WITHHELD", WITHHELD_FAILED)
+    if r.verdict != "WITHHELD" and not r.quotes:
+        return FitResult("WITHHELD", WITHHELD_NO_EVIDENCE)
+    if r.verdict == "WITHHELD":
+        return FitResult("WITHHELD", r.reason or WITHHELD_NO_EVIDENCE)
+    return r
+
+
+# ---------------------------------------------------------------- 태도
+
+
+def check_attitude(out: AttitudeOut, sources: dict[str, str], finder: QuoteFinder) -> tuple[AttitudeResult, list[str]]:
+    issues: list[str] = []
+    if not out.advice:
+        issues.append("조언이 없음")
+    if len(out.advice) > MAX_ADVICE:
+        issues.append(f"조언은 {MAX_ADVICE}개까지")
+    result = AttitudeResult()
+    for item in out.advice[:MAX_ADVICE]:
+        if word := forbidden(item.text):
+            issues.append(f"조언에 금지 표현: {word}")
+            continue
+        quotes, qi = locate(item.quotes, sources, finder)
+        issues += qi
+        result.advice.append(item.text)
+        result.quotes += quotes
+    return result, issues
+
+
+# ---------------------------------------------------------------- 질문별
+
+
+def check_per_question(out: PerQuestionOut, expected_qids: list[str], known_claims: set[str]) -> tuple[dict[str, QuestionOut], list[str]]:
+    issues: list[str] = []
+    kept: dict[str, QuestionOut] = {}
+    for item in out.items:
+        if item.question_id not in expected_qids:
+            issues.append(f"피드백 대상이 아닌 질문: {item.question_id}")
+            continue
+        if item.question_id in kept:
+            issues.append(f"같은 질문을 두 번 씀: {item.question_id}")
+            continue
+        bad = [c for c in item.extra_claim_ids if c not in known_claims]
+        if bad:
+            issues.append(f"{item.question_id} 없는 주장 ID: {bad}")
+        texts = [*item.strengths, *item.gaps, item.next_action]
+        if word := next((w for t in texts if (w := forbidden(t))), None):
+            issues.append(f"{item.question_id} 피드백에 금지 표현: {word}")
+        kept[item.question_id] = item.model_copy(update={
+            "extra_claim_ids": [c for c in item.extra_claim_ids if c in known_claims],
+            "strengths": [s for s in item.strengths if not forbidden(s)],
+            "gaps": [g for g in item.gaps if not forbidden(g)],
+        })
+    missing = [q for q in expected_qids if q not in kept]
+    if missing:
+        issues.append(f"피드백이 빠진 질문: {missing}")
+    return kept, issues
