@@ -26,3 +26,4 @@ data/private/
 *-key.json
 credentials*.json
 *.pem
+var/
