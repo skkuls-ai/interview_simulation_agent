@@ -44,6 +44,7 @@ export function InterviewScreen({ question, current, total, onAnswerComplete }: 
   const recordingStartedAt = useRef(0);
   const recordingPromise = useRef<ReturnType<BrowserAnswerRecorder["start"]> | null>(null);
   const finishingRef = useRef(false);
+  const capturedRef = useRef<CapturedAnswer | null>(null);
   const progress = `${Math.round((current / total) * 100)}%`;
 
   useEffect(() => {
@@ -153,18 +154,19 @@ export function InterviewScreen({ question, current, total, onAnswerComplete }: 
     finishingRef.current = true;
     setPhase(timedOut ? "TIMEOUT" : "SUBMITTING");
     try {
-      const recorded = recorderRef.current.isRecording
-        ? await recorderRef.current.stop(timedOut ? "time_limit" : "completed")
-        : await recordingPromise.current;
-      const duration = Math.max(0, (performance.now() - recordingStartedAt.current) / 1_000);
-      const deliveryMetrics = perceptionRef.current?.finishAnswer() ?? unavailableMetrics();
-      if (timedOut) await new Promise((resolve) => window.setTimeout(resolve, 3_000));
-      await onAnswerComplete({
-        audio: recorded.audio?.blob ?? null,
-        duration_sec: duration,
-        timed_out: timedOut,
-        delivery_metrics: deliveryMetrics,
-      });
+      if (!capturedRef.current) {
+        const recorded = recorderRef.current.isRecording
+          ? await recorderRef.current.stop(timedOut ? "time_limit" : "completed")
+          : await recordingPromise.current;
+        capturedRef.current = {
+          audio: recorded.audio?.blob ?? null,
+          duration_sec: Math.max(0, (performance.now() - recordingStartedAt.current) / 1_000),
+          timed_out: timedOut,
+          delivery_metrics: perceptionRef.current?.finishAnswer() ?? unavailableMetrics(),
+        };
+        if (timedOut) await new Promise((resolve) => window.setTimeout(resolve, 3_000));
+      }
+      await onAnswerComplete(capturedRef.current);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "답변을 처리하지 못했습니다.");
       finishingRef.current = false;

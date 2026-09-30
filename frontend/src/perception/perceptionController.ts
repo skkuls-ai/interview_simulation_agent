@@ -90,7 +90,7 @@ export class BrowserPerceptionController {
     if (timestamp - this.lastSampleAt >= this.config.sample_interval_ms) {
       this.lastSampleAt = timestamp;
       try {
-        this.processResult(this.landmarker.detect(this.video, timestamp));
+        this.processResult(this.landmarker.detect(this.video, timestamp), timestamp);
       } catch {
         this.aggregator.add({ face_detected: false });
       }
@@ -98,7 +98,7 @@ export class BrowserPerceptionController {
     this.animationFrame = requestAnimationFrame(this.analyzeFrame);
   };
 
-  private processResult(result: FaceLandmarkerResult): void {
+  private processResult(result: FaceLandmarkerResult, timestamp: number): void {
     const landmarks = result.faceLandmarks[0];
     if (!landmarks || !this.baseline) {
       this.aggregator.add({ face_detected: false });
@@ -108,6 +108,7 @@ export class BrowserPerceptionController {
     this.aggregator.add({
       face_detected: true,
       looking_at_camera: this.gazeAnalyzer.isLookingAtCamera(gaze, this.baseline),
+      timestamp_ms: timestamp,
     });
   }
 

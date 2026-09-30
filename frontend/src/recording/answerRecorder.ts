@@ -1,4 +1,5 @@
 export const ANSWER_AUDIO_MIME_TYPE = "audio/webm;codecs=opus";
+const ANSWER_AUDIO_BITS_PER_SECOND = 32_000;
 
 export interface RecordedAudio {
   blob: Blob;
@@ -40,7 +41,10 @@ export class BrowserAnswerRecorder {
     this.stopReason = "completed";
     this.audioTrack = track;
     this.audioTrack.addEventListener("ended", this.handleTrackEnded);
-    this.recorder = new MediaRecorder(new MediaStream([track]), { mimeType: ANSWER_AUDIO_MIME_TYPE });
+    this.recorder = new MediaRecorder(new MediaStream([track]), {
+      mimeType: ANSWER_AUDIO_MIME_TYPE,
+      audioBitsPerSecond: ANSWER_AUDIO_BITS_PER_SECOND,
+    });
     this.completion = new Promise<RecordingResult>((resolve, reject) => {
       this.resolveCompletion = resolve;
       this.rejectCompletion = reject;

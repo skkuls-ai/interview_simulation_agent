@@ -5,6 +5,7 @@ import type { DeliveryMetrics } from "./types";
 export interface VisualFrameSample {
   face_detected: boolean;
   looking_at_camera?: boolean;
+  timestamp_ms?: number;
 }
 
 /** 프레임별 판정을 답변 하나의 시선 지표로 집계합니다. */
@@ -13,7 +14,8 @@ export class AnswerVisualAggregator {
   private detectedFrames = 0;
   private forwardFrames = 0;
   private gazeAwayCount = 0;
-  private previousLookingAtCamera: boolean | null = null;
+  private awayStartedAt: number | null = null;
+  private awayCounted = false;
 
   constructor(private readonly config: PerceptionConfig = DEFAULT_PERCEPTION_CONFIG) {}
 
@@ -22,17 +24,26 @@ export class AnswerVisualAggregator {
     this.detectedFrames = 0;
     this.forwardFrames = 0;
     this.gazeAwayCount = 0;
-    this.previousLookingAtCamera = null;
+    this.awayStartedAt = null;
+    this.awayCounted = false;
   }
 
   add(sample: VisualFrameSample): void {
     this.totalFrames += 1;
     if (!sample.face_detected) return;
     this.detectedFrames += 1;
-    const lookingAtCamera = sample.looking_at_camera === true;
-    if (lookingAtCamera) this.forwardFrames += 1;
-    if (!lookingAtCamera && this.previousLookingAtCamera !== false) this.gazeAwayCount += 1;
-    this.previousLookingAtCamera = lookingAtCamera;
+    const timestamp = sample.timestamp_ms ?? this.detectedFrames * this.config.sample_interval_ms;
+    if (sample.looking_at_camera === true) {
+      this.forwardFrames += 1;
+      this.awayStartedAt = null;
+      this.awayCounted = false;
+      return;
+    }
+    this.awayStartedAt ??= timestamp;
+    if (!this.awayCounted && timestamp - this.awayStartedAt >= this.config.gaze_away_min_ms) {
+      this.gazeAwayCount += 1;
+      this.awayCounted = true;
+    }
   }
 
   finalize(): DeliveryMetrics {
