@@ -6,15 +6,49 @@ C의 저장소 뼈대(W-02, W-03)가 올라오기 전까지 쓰는 독립 폴더
 | --- | --- | --- |
 | `evaluate/attitude.py` | `backend/app/nodes/evaluate/attitude.py` | 태도 측정값 계산 |
 | `evaluate/contract.py` | 삭제, `backend/app/schemas/state.py`로 교체 | docs/04 계약 모델 임시 복사본 |
-| `tests/test_attitude.py` | `backend/tests/` | 단위 테스트 25개 |
+| `evaluate/runner.py`, `rules.py`, `prompts.py`, `quotes.py` | `backend/app/nodes/evaluate/` | 피드백 생성 러너, 코드 판정 규칙, 프롬프트 초안, 인용 찾기(임시) |
+| `evaluate/llm/` | C의 LLM 클라이언트로 교체하거나 `backend/app/llm/` | orchestration의 Gemini 클라이언트 복사본 (역할별 모델) |
+| `tests/test_attitude.py`, `tests/test_runner.py` | `backend/tests/` | 단위 테스트 44개 (API 호출 없음) |
+| `scripts/run_demo_eval.py` | `scripts/` | 데모 시나리오로 실제 Gemini 피드백 1회 실행 |
 | `mock/report.json`, `mock/report_edge.json` | `shared/mock/` (C 리뷰) | 화면 7용 mock (W-14) |
 | `mock/build_report_mock.py` | `shared/mock/` 또는 `scripts/` | mock 생성과 계약 검사 |
 
 ```bash
 pip install pydantic pytest
-python -m pytest -q tests             # 25 passed
+python -m pytest -q tests             # 44 passed
+python scripts/run_demo_eval.py --fake   # LLM 없이 흐름 확인
+python scripts/run_demo_eval.py          # 실제 Gemini (gcloud 로그인, GOOGLE_CLOUD_PROJECT 필요)
 python mock/build_report_mock.py      # mock 두 개 생성 + 검사
 ```
+
+## 피드백 생성 러너 (`evaluate/runner.py`)
+
+9/30 결정한 A 구조: 영역별로 한 번에 판정하고, 최종 판정은 코드 규칙으로 확정한다.
+
+```
+태도 측정값 (코드) ─┐
+                    ├─ LLM 4개 동시: 태도 조언, 직무 적합성, 답변 일관성, 질문별 피드백(5개 한 번에)
+                    ├─ 코드 검증 → 검증 에이전트 1회
+                    ├─ 무효인 호출만 이유를 넘겨 1회 재평가 → 코드 검증 → 검증 에이전트
+                    └─ 규칙대로 정리, QT- 발급, Report 조립 (report.json 모양)
+```
+
+정상일 때 LLM 호출 5회(평가 4 + 검증 1), 재평가가 모두 일어나면 최대 10회.
+
+| 코드 규칙 | 내용 |
+| --- | --- |
+| 인용 검증 (T-201, T-202) | 원문에 없는 인용은 버리고 재평가 사유로 넘김. 위치는 코드가 다시 계산 |
+| 근거 없는 판정 | 재평가 뒤에도 인용이 하나도 없으면 `WITHHELD` |
+| 판정 가능한 답변 수 | 인식된 답변이 2개 미만이면 직무 적합성, 일관성은 LLM을 부르지 않고 `WITHHELD` |
+| 참조 ID (T-203) | 목록에 없는 `RQ-`, `CL-`는 버림 |
+| 인식 실패 (T-215) | LLM에 넘기지 않음. 질문별 피드백은 안내 문구, 연결 정보는 유지 |
+| 금지 표현 (T-013) | 재평가 사유. 남으면 그 문장을 빼거나 `WITHHELD` |
+| 시선 (T-213) | 태도 프롬프트에만 넣음. 시선 값이 달라도 판정이 같은지 테스트로 확인 |
+| 실패 처리 | LLM이 두 번 실패하면 그 영역만 대체값. 검증 에이전트가 실패하면 코드 검증 결과로 진행 |
+
+- 가짜 LLM이 mock 문구를 돌려주면 러너 결과가 `mock/report.json`과 완전히 같다 (테스트로 확인).
+- 인용 찾기(`quotes.py`)와 금지 표현 목록(`rules.py`)은 임시 구현이다. B의 인용 검증 규칙과 금지 표현 검사가 나오면 교체한다.
+- 프롬프트(`prompts.py`)는 초안이다. 실제 Gemini 결과를 보고 다듬는다(5번 작업).
 
 ## 태도 측정값 (`evaluate/attitude.py`)
 

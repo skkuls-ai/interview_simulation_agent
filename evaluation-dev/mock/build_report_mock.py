@@ -33,7 +33,6 @@ FORBIDDEN = re.compile(r"합격|불합격|채용 점수|상위 ?\d+ ?%|자신감
 REQUIREMENTS = [
     {"requirement_id": "RQ-003", "text": "RAG 또는 벡터 데이터베이스 활용 경험", "kind": "SKILL", "source_doc": "job_posting"},
     {"requirement_id": "RQ-005", "text": "LLM 응답 품질을 정량적으로 평가하고 모니터링한 경험", "kind": "SKILL", "source_doc": "job_posting"},
-    {"requirement_id": "RQ-011", "text": "문제를 스스로 정의하고 근거를 바탕으로 해결하는 사람", "kind": "TALENT", "source_doc": "job_posting"},
     {"requirement_id": "RQ-014", "text": "검색 품질 평가 데이터셋 구축과 검색 지표(Recall@k 등) 측정", "kind": "DUTY", "source_doc": "job_description"},
 ]
 CLAIMS = [
