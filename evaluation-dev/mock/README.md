@@ -9,7 +9,7 @@
 | `build_report_mock.py` | 두 파일을 만드는 스크립트와 계약 검사 | 답변이나 문구를 고칠 때 이 파일을 고치고 다시 실행 |
 
 ```bash
-python evaluation-dev/mock/build_report_mock.py     # 두 파일 생성, 검사 통과 여부 출력
+python mock/build_report_mock.py     # 두 파일 생성, 검사 통과 여부 출력 (evaluation-dev 폴더에서)
 ```
 
 ## 시나리오
@@ -29,6 +29,8 @@ A의 데모 샘플(가상 지원자 김하늘, 가상 회사 브라이트런)을
 - **태도**: 판정과 점수 없음. 측정값과 조언 3개
 
 ## 코드가 계산한 값
+
+태도 측정값은 `evaluate/attitude.py`의 `attitude_metrics()`로 계산한다(실제 피드백과 같은 함수).
 
 - 인용 `start`, `end`: 답변 원문에서 찾은 위치. `answer_text[start:end] == text`
 - 군말: 어, 음, 저기, 뭐랄까만 센다. 「그」는 세지 않는다 (9/29 STT 테스트)

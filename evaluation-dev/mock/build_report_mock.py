@@ -1,6 +1,6 @@
 """report.json, report_edge.json 생성 스크립트 (담당 E, W-14).
 
-인용 위치(start, end), 군말 횟수, 분당 어절 수, 시간 초과 횟수를 코드로 계산해 mock 에 넣고,
+인용 위치(start, end)를 코드로 계산하고, 태도 측정값은 evaluate/attitude.py 로 계산해 mock 에 넣고,
 만든 뒤 계약 규칙으로 스스로 검사합니다. 답변이나 판정 문구를 고치려면 이 파일을 고친 뒤 다시 실행하세요.
 
     python build_report_mock.py            # report.json, report_edge.json 생성 + 검사
@@ -13,20 +13,18 @@ from __future__ import annotations
 import copy
 import json
 import re
+import sys
 from pathlib import Path
 
 HERE = Path(__file__).parent
+sys.path.insert(0, str(HERE.parent))
+from evaluate.attitude import attitude_metrics  # noqa: E402  측정값은 실제 계산 모듈로
+from evaluate.contract import Answer  # noqa: E402
 SESSION_ID = "S-3f2a9c1e"
 
 # ------------------------------------------------------------------ 규칙 (9/29 C-D 테스트에서 정함)
 
-FILLERS = re.compile(r"(?<![가-힣])(어+|음+|저기|뭐랄까)(?![가-힣])")  # 「그」는 세지 않음
 FORBIDDEN = re.compile(r"합격|불합격|채용 점수|상위 ?\d+ ?%|자신감|진실성|거짓|긴장|불안")  # T-013
-
-
-def eojeol(text: str) -> int:
-    """분당 어절 수의 어절: 공백 기준 (perception 가이드 정의)."""
-    return len(text.split())
 
 
 # ------------------------------------------------------------------ 분석 결과 (A 샘플 기준, ID 는 mock 용)
@@ -185,23 +183,12 @@ class QuoteIds:
 
 def build(qa: list[dict], per_question: dict, job_fit: dict, consistency: dict, advice: list) -> dict:
     by_id = {q["question_id"]: q for q in qa}
-    ok = [q for q in qa if q["answer_text"] is not None]  # NO_SPEECH·FAILED 는 말투 계산에서 제외 (제안)
     ids = QuoteIds()
-
-    words = sum(eojeol(q["answer_text"]) for q in ok)
-    minutes = sum(q["duration_sec"] for q in ok) / 60
-    fillers = sum(len(FILLERS.findall(q["answer_text"])) for q in ok)
-    gaze = [q["delivery"] for q in qa if q["delivery"] and q["delivery"]["measurable"]]
-    metrics = {
-        "speech": {"words_per_min": round(words / minutes) if minutes else None, "filler_count": fillers},
-        "gaze": ({"measurable": True,
-                  "frontal_ratio": round(sum(g["frontal_ratio"] for g in gaze) / len(gaze), 2),
-                  "gaze_away_count": sum(g["gaze_away_count"] for g in gaze)}
-                 if gaze else {"measurable": False, "frontal_ratio": None, "gaze_away_count": None}),
-        "time": {"timed_out_count": sum(q["timed_out"] for q in qa),
-                 "per_question": [{"question_id": q["question_id"], "duration_sec": q["duration_sec"],
-                                   "timed_out": q["timed_out"]} for q in qa]},
-    }
+    metrics = attitude_metrics(
+        Answer(question_id=q["question_id"], transcript=q["answer_text"],
+               transcript_status="DONE" if q["answer_text"] else "NO_SPEECH",
+               duration_sec=q["duration_sec"], timed_out=q["timed_out"], delivery=q["delivery"])
+        for q in qa)
     attitude_quotes, advice_text = [], []
     for text, quotes in advice:
         advice_text.append(text)
