@@ -6,6 +6,7 @@ from .state import (
     FitFeedback,
     QuestionFeedback,
     QuestionType,
+    RequirementKind,
     SessionStatus,
     Step,
 )
@@ -81,6 +82,14 @@ class ReportCheckpoint(BaseModel):
     title: str
 
 
+class ReportRequirement(BaseModel):
+    """job_fit.refs가 가리키는 요구사항만. 화면 7이 RQ- ID를 글로 보여주기 위해 동봉한다."""
+
+    requirement_id: str
+    text: str
+    kind: RequirementKind
+
+
 class ReportResponse(BaseModel):  # GET /report, 200
     session_id: str
     attitude: AttitudeFeedback
@@ -88,6 +97,7 @@ class ReportResponse(BaseModel):  # GET /report, 200
     consistency: FitFeedback
     per_question: list[QuestionFeedback] = []
     questions: list[ReportQuestion] = []
+    requirements: list[ReportRequirement] = []
     claims: list[ReportClaim] = []
     checkpoints: list[ReportCheckpoint] = []
 
