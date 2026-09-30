@@ -224,6 +224,62 @@ def test_forbidden_advice_is_dropped():
     assert report["attitude"]["advice"] == ["결론부터 말해 보세요."]
 
 
+@pytest.mark.parametrize("text", [
+    "질문에서 묻는 측정 기준과 개선 방법에 집중하여 불필요한 한계점 언급 없이 완결 짓는 방식을 준비해 두세요.",
+    "LangGraph를 써 보지 못했다는 말은 굳이 하지 말고 이해한 내용 위주로 답해 보세요.",
+    "갈등 상황에서 본인이 제안한 데이터 비교 기준과 역할을 확신 있는 어조로 덧붙여 말해 보세요.",
+    "평가 데이터셋 구축 규모와 정확한 측정 수치를 서류 내용과 일치하도록 정리해 두세요.",
+])
+def test_bad_coaching_is_caught(text):  # 9/30 실측에서 나온 문장
+    from app.nodes.evaluate.rules import bad_advice
+    assert bad_advice(text, content_only=True)
+
+
+@pytest.mark.parametrize("text", [
+    "한계를 인정한 뒤 대신 해 본 것을 덧붙여 보세요.",
+    "경험이 없다는 점을 먼저 밝히고 대신 공부한 내용을 덧붙여 보세요.",
+    "배경 설명은 생략하고 결론부터 말해 보세요.",
+    "서류에 적은 50개와 답변의 100개 중 실제 값을 확인해 틀린 쪽을 바로잡아 두세요.",
+])
+def test_good_coaching_passes(text):
+    from app.nodes.evaluate.rules import bad_advice
+    assert bad_advice(text, content_only=True) is None
+
+
+def test_tone_advice_allowed_in_attitude_but_not_per_question():
+    from app.nodes.evaluate.rules import bad_advice
+    text = "문장 끝을 흐리지 말고 명확한 어조로 끝맺어 보세요."
+    assert bad_advice(text) is None and bad_advice(text, content_only=True)
+
+
+def test_per_question_bad_next_action_retries_with_reason_then_template():
+    items = mock_outputs()["per_question"].items
+    bad_items = [with_(i, next_action="불필요한 한계점 언급 없이 완결 짓는 방식을 준비해 두세요.") if i.question_id == "Q-4" else i
+                 for i in items]
+    bad = P.PerQuestionOut(items=bad_items)
+    llm = FakeLLM({"per_question": [bad, bad]})
+    report, ev = run(llm)
+    assert ev.trace.retried == ["per_question"]
+    assert "숨기라는 조언" in llm.prompts["per_question"][1]  # 무엇을 고칠지 전달
+    q4 = next(p for p in report["per_question"] if p["question_id"] == "Q-4")
+    assert "한계점" not in q4["next_action"] and q4["strengths"]  # 문장만 바꾸고 나머지는 유지
+
+
+def test_per_question_bad_next_action_fixed_on_retry():
+    items = mock_outputs()["per_question"].items
+    bad = P.PerQuestionOut(items=[with_(i, gaps=["확신 있는 어조로 말하지 못했습니다."]) if i.question_id == "Q-2" else i
+                                  for i in items])
+    report, ev = run(FakeLLM({"per_question": [bad, mock_outputs()["per_question"]]}))
+    assert ev.trace.retried == ["per_question"]
+    assert report["per_question"] == json.loads((MOCK_DIR / "report.json").read_text(encoding="utf-8"))["per_question"]
+
+
+def test_concealing_attitude_advice_is_dropped():
+    out = P.AttitudeOut(advice=[{"text": "모르는 부분은 언급하지 말고 넘어가 보세요."}, {"text": "결론부터 말해 보세요."}])
+    report, _ = run(FakeLLM({"attitude": [out, out]}))
+    assert report["attitude"]["advice"] == ["결론부터 말해 보세요."]
+
+
 # ------------------------------------------------------------------ 인식 실패 (T-215), 판정 가능 답변 수
 
 

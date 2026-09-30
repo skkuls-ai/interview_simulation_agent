@@ -23,6 +23,7 @@ OUT = HERE.parents[1] / "shared" / "mock"  # 결과 위치, 입력(sample_inputs
 sys.path.insert(0, str(HERE.parent))
 from app.nodes.evaluate.attitude import attitude_metrics  # noqa: E402  측정값은 실제 계산 모듈로
 from app.schemas.state import Answer  # noqa: E402
+from app.nodes.evaluate.rules import bad_advice  # noqa: E402
 
 SESSION_ID = "S-3f2a9c1e"
 INPUTS = json.loads((OUT / "sample_inputs.json").read_text(encoding="utf-8"))
@@ -305,6 +306,10 @@ def check(report: dict, name: str) -> list[str]:
     text = json.dumps({k: report[k] for k in ("attitude", "job_fit", "consistency", "per_question")}, ensure_ascii=False)
     if m := FORBIDDEN.search(text):  # T-013
         errs.append(f"금지 표현: {m.group(0)}")
+    for p in report["per_question"]:  # 코칭 규칙 (러너와 같은 검사)
+        errs += [f"{p['question_id']} {why}" for t in [*p["strengths"], *p["gaps"], p["next_action"]]
+                 if (why := bad_advice(t, content_only=True))]
+    errs += [f"태도 조언 {why}" for t in report["attitude"]["advice"] if (why := bad_advice(t))]
     for c in CLAIMS:  # T-204 서류 원문 그대로
         if c["text"] not in DOC_TEXT[c["source_doc"]]:
             errs.append(f"{c['claim_id']} 서류 원문에 없음")
