@@ -12,6 +12,7 @@
 모델
     GEMINI_MODEL              기본 모델 (검증 역할 제외 전체). 기본 gemini-3.8-flash
     INTERVIEW_MODEL_<ROLE>    역할별 덮어쓰기. 예: INTERVIEW_MODEL_VALIDATOR=gemini-3.7-flash
+    INTERVIEW_THINKING_<ROLE> 역할별 추론 수준 덮어쓰기 (LOW, MEDIUM, HIGH). 예: INTERVIEW_THINKING_EVALUATOR=MEDIUM
 """
 
 from __future__ import annotations
@@ -36,11 +37,17 @@ DEFAULT_ROLES: dict[str, RoleSettings] = {
     "follow_up_judge": RoleSettings(model="gemini-3.8-flash", thinking_level="LOW", timeout_sec=8, retries=1),
     "intro_check": RoleSettings(model="gemini-3.8-flash", thinking_level="LOW", timeout_sec=10, retries=1),
     # 백그라운드, 면접 전후: 품질 우선
-    "evaluator": RoleSettings(model="gemini-3.8-flash", thinking_level="MEDIUM", timeout_sec=60, retries=2),
+    # E 판정 (직무 적합성, 답변 일관성): 9/30 지원자A 실측에서 LOW 가 MEDIUM 과 판정이 같고
+    # (정상 3/3, 서류와 어긋난 답변 3/3 잡음) 전체 시간은 32초 -> 11초라 LOW 로 바꿈. 보통 3~8초라 20초 제한
+    "evaluator": RoleSettings(model="gemini-3.8-flash", thinking_level="LOW", timeout_sec=20, retries=2),
+    # E 코칭 문장 (태도 조언, 질문별 피드백): 추론 수준을 낮춰 속도 우선. 보통 5~15초라 25초 제한
+    # (9/30 실측: 45초 제한에서 504 가 42초 만에 와 전체 46초가 된 적 있음)
+    "coach": RoleSettings(model="gemini-3.8-flash", thinking_level="LOW", timeout_sec=25, retries=2),
     "analysis": RoleSettings(model="gemini-3.8-flash", thinking_level="MEDIUM", timeout_sec=90, retries=2),
     "feedback": RoleSettings(model="gemini-3.8-flash", thinking_level="HIGH", timeout_sec=120, retries=2),
-    # 만든 모델과 다른 모델로 검사
-    "validator": RoleSettings(model="gemini-3.7-flash", thinking_level="MEDIUM", timeout_sec=60, retries=2),
+    # E 검증 에이전트: 9/30 실측에서 3.7 Flash 가 429(호출 한도)로 30초까지 늦어져 3.8 Flash LOW 로 바꿈.
+    # 15초 안에 답이 없으면 재시도하지 않고 코드 검증 결과로 진행 (화면 6 대기 상한)
+    "validator": RoleSettings(model="gemini-3.8-flash", thinking_level="LOW", timeout_sec=15, retries=0),
 }
 
 
@@ -73,7 +80,9 @@ class LLMSettings(BaseModel):
                     s.roles[role] = cfg.model_copy(update={"model": base})
         for role, cfg in s.roles.items():
             if m := os.environ.get(f"INTERVIEW_MODEL_{role.upper()}"):
-                s.roles[role] = cfg.model_copy(update={"model": m})
+                s.roles[role] = cfg = cfg.model_copy(update={"model": m})
+            if t := os.environ.get(f"INTERVIEW_THINKING_{role.upper()}", "").strip().upper():
+                s.roles[role] = RoleSettings.model_validate({**cfg.model_dump(), "thinking_level": t})  # 틀린 값은 오류
         return s
 
     def role(self, name: str) -> RoleSettings:

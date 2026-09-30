@@ -7,10 +7,20 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
+from ...validators import quotes as V
 from .prompts import AttitudeOut, FitOut, PerQuestionOut, QuestionOut, QuoteRef
-from .quotes import QuoteFinder
+
+# 인용 찾기: (인용, 답변 원문) -> 원문 기준 (start, end) 또는 None. 테스트에서 바꿔 끼울 수 있게 함수로 받음
+QuoteFinder = Callable[[str, str], "tuple[int, int] | None"]
+
+
+def find_quote(quote: str, source: str) -> tuple[int, int] | None:
+    """validators/quotes.py(A, B 공용) 규칙: 공백과 문장부호를 빼고 비교, 8자 미만 거부, 위치는 원문 기준으로 다시 계산."""
+    m = V.find_quote(quote, source)
+    return (m.start, m.end) if m else None
 
 # T-013 금지 표현 (임시 목록, B 의 검사가 나오면 교체)
 FORBIDDEN_RE = re.compile(r"합격|불합격|채용 점수|상위 ?\d+ ?%|자신감|진실성|거짓말|긴장|불안")

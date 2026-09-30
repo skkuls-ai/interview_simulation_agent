@@ -13,12 +13,12 @@ record.report_response = ReportResponse.model_validate(report)
 
 - 부르는 시점: 답변 5개의 `transcript_status`가 모두 `PENDING`이 아니게 된 뒤 (STT 대기 제한 30초, 넘으면 `FAILED`로 두고 시작)
 - `on_step`으로 화면 6의 `attitude`, `job_fit`, `consistency`, `compose` 단계를 기록한다. `transcribe`는 C의 몫
-- `llm`: `llm/client.py`의 `GeminiClient(LLMSettings.from_env())`
+- `llm`: 공용 `app/llm/client.py`의 `GeminiClient(LLMSettings.from_env())` (A와 같은 클라이언트, 역할만 다름)
 
 ## 네 단계를 러너 하나가 처리하는 이유
 
 docs/05 10절은 노드 순서를 `graph/`에서 정하게 되어 있지만, 평가 네 단계는 이 러너가 동시에 처리한다(9/30 C와 확인 중).
-순서대로 부르면 호출 시간이 모두 더해져 60초를 넘는다. 9/30 실측: 동시 실행과 검증 겹치기로 보통 11~15초.
+순서대로 부르면 호출 시간이 모두 더해져 60초를 넘는다. 9/30 실측: 동시 실행과 검증 겹치기로 보통 8~15초.
 
 ```
 태도 측정값 (코드) ─┐
@@ -36,8 +36,8 @@ docs/05 10절은 노드 순서를 `graph/`에서 정하게 되어 있지만, 평
 | `rules.py` | 코드 판정 규칙: 인용 위치 검사, refs 검사, 근거 없으면 WITHHELD, 금지 표현 |
 | `prompts.py` | 프롬프트와 LLM 출력 모양 (초안, 실측 보며 다듬는 중) |
 | `attitude.py` | 태도 측정값 계산 (군말, 분당 어절, 시선, 시간). LLM 안 씀 |
-| `quotes.py` | 인용 찾기 **임시 구현**. B의 `validators/` 인용 검증이 나오면 교체 |
-| `llm/` | Gemini 클라이언트 (역할별 모델, 재시도, 429 대기). 공용 위치가 정해지면 이동 |
+| (공용) `app/validators/quotes.py` | 인용 찾기. 공백과 문장부호를 빼고 비교, 8자 미만 거부 (A 작성, B가 검증 규칙 합칠 예정) |
+| (공용) `app/llm/` | Gemini 클라이언트. E 역할 `evaluator`, `coach`, `validator` 설정과 429 대기 포함 |
 
 ## 코드 판정 규칙
 
@@ -56,8 +56,8 @@ docs/05 10절은 노드 순서를 `graph/`에서 정하게 되어 있지만, 평
 
 | 역할 | 대상 | 기본 | 제한 |
 | --- | --- | --- | --- |
-| `evaluator` | 직무 적합성, 답변 일관성 | gemini-3.8-flash, MEDIUM | 60초 |
-| `coach` | 태도 조언, 질문별 피드백 | gemini-3.8-flash, LOW | 45초 |
+| `evaluator` | 직무 적합성, 답변 일관성 | gemini-3.8-flash, LOW | 20초 |
+| `coach` | 태도 조언, 질문별 피드백 | gemini-3.8-flash, LOW | 25초 |
 | `validator` | 검증 에이전트 | gemini-3.8-flash, LOW | 15초, 넘기면 코드 검증 결과로 진행 |
 
 연결: `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION=global` (gcloud 로그인 또는 서비스 계정 키)
@@ -79,4 +79,12 @@ python scripts/build_report_mock.py          # shared/mock/report.json, report_e
 ```
 
 - 가짜 LLM이 mock 문구를 돌려주면 러너 결과가 `shared/mock/report.json`과 완전히 같다 (테스트로 확인). 화면 7을 mock으로 만들면 실제 결과에도 맞는다.
-- 9/30 실측(이전 김하늘 시나리오 7회): 판정 7/7 기대와 같음. 데모 샘플이 지원자A로 정해져 입력을 바꿨으니 다시 잴 것. 보통 11~15초, Gemini 쪽 지연이 걸린 호출이 있으면 40~50초 (제한 시간 조정 예정).
+- 9/30 실측, 지원자A (`run_demo_eval.py --repeat 3`)
+
+  | 판정 추론 수준 | 입력 | 직무 적합성 | 답변 일관성 | 전체 시간 중앙값 |
+  | --- | --- | --- | --- | --- |
+  | MEDIUM | 기본 | 3/3 | 2/3 (틀린 1회는 mock 답변 문장 탓, 고침) | 32.0초 |
+  | LOW | 기본 | 3/3 | 3/3 | 11.0초 |
+  | LOW | `--mismatch` (서류 50개, 답변 100개) | 3/3 | 3/3 NEEDS_WORK로 잡음 | 23.0초 (504 한 번 포함) |
+
+  판정이 같고 빨라서 `evaluator`를 LOW로 바꿈. 제한 시간은 보통 걸리는 시간의 약 두 배로 줄임.
