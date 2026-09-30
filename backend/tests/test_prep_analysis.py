@@ -15,6 +15,11 @@ from pathlib import Path
 
 from app.nodes.prep import analysis as A
 from app.nodes.prep import analysis_prompts as P
+from app.validators.competency_question_validator import CompetencyQuestionGeneration
+from app.validators.technical_question_validator import (
+    TechnicalQuestionGeneration,
+    TechnicalQuestionGroundingReview,
+)
 from app.schemas.state import Analysis, Claim, Requirement
 
 DEMO = Path(__file__).parent / "fixtures" / "prep_demo"
@@ -206,11 +211,73 @@ def test_run_analysis_reports_steps_in_order_with_details():
         ("read_resume", "경험 2개, 확인할 주장 5개"),
         ("link", None),
         ("checkpoints", None),
+        ("competency_questions", "인성·역량 질문 선택 실패"),
+        ("technical_questions", "기술 유형 주장과 이를 확인할 검증 포인트가 없어 기술 질문을 만들 수 없습니다."),
     ]
     a = rep.analysis
     assert len(a.links) == len(a.requirements)  # 요구사항마다 연결 결과 하나
     assert a.checkpoints[0].claim_ids == ["CL-001", "CL-002"]
     Analysis.model_validate(a.model_dump())  # 계약 모양 그대로
+
+
+def test_run_analysis_generates_api_questions_from_technical_claims():
+    claim_output = {**CLAIMS_OUT, "claims": [dict(item) for item in CLAIMS_OUT["claims"]]}
+    claim_output["claims"][0]["types"] = ["METRIC", "TECH"]
+    generated_questions = {
+        "status": "ready",
+        "reason": "기술 주장과 검증 포인트가 확인되었습니다.",
+        "questions": [
+            {
+                "text": "검색 정확도를 개선할 때 임베딩 모델과 청크 크기는 어떻게 정하셨나요?",
+                "claim_ids": ["CL-001"],
+                "checkpoint_ids": ["CP-001"],
+                "requirement_ids": ["RQ-001"],
+                "criteria": ["선정 근거", "검색 품질과의 관계"],
+            },
+            {
+                "text": "검색 정확도 개선 효과를 어떤 평가 데이터와 지표로 검증하셨나요?",
+                "claim_ids": ["CL-001"],
+                "checkpoint_ids": ["CP-001"],
+                "requirement_ids": ["RQ-001"],
+                "criteria": ["평가 데이터 구성", "측정 지표와 재현성"],
+            },
+        ],
+    }
+    llm = FakeLLM({
+        (P.RequirementsOutput, "job_posting"): POSTING_OUT,
+        (P.RequirementsOutput, "job_description"): DESCRIPTION_OUT,
+        P.ClaimsOutput: claim_output,
+        P.LinksOutput: {"links": [{"requirement_id": "RQ-001", "claim_ids": ["CL-001"]}]},
+        P.CheckpointsOutput: {"checkpoints": [cp(["CL-001"], "검색 품질 측정 기준", "high")]},
+        CompetencyQuestionGeneration: {
+            "status": "ready",
+            "reason": "문제 해결과 협력 역량이 직무 요구와 연결됩니다.",
+            "selections": [
+                {"question_number": 26, "requirement_ids": ["RQ-001"], "rationale": "문제 해결 역량 확인"},
+                {"question_number": 86, "requirement_ids": ["RQ-002"], "rationale": "협력 역량 확인"},
+            ],
+        },
+        TechnicalQuestionGeneration: generated_questions,
+        TechnicalQuestionGroundingReview: {
+            "is_valid": True,
+            "reason": "질문이 분석 근거에 부합합니다.",
+            "unsupported_details": [],
+        },
+    })
+
+    rep = A.run_analysis(llm, RESUME, POSTING, DESCRIPTION, COVER)
+
+    assert rep.technical_question_status == "ready"
+    assert rep.competency_question_status == "ready"
+    assert [(q.question_id, q.order, q.type.value) for q in rep.competency_questions] == [
+        ("Q-2", 2, "BEHAVIOR"), ("Q-3", 3, "BEHAVIOR"),
+    ]
+    assert rep.competency_questions[0].question_bank_id == "COMP-문제해결력-026"
+    assert [(q.question_id, q.order, q.type.value) for q in rep.technical_questions] == [
+        ("Q-4", 4, "TECH"), ("Q-5", 5, "TECH"),
+    ]
+    assert rep.technical_questions[0].checkpoint_ids == ["CP-001"]
+    assert rep.technical_questions[0].criteria == ["선정 근거", "검색 품질과의 관계"]
 
 
 def test_run_analysis_without_llm_still_returns_contract_shape():
