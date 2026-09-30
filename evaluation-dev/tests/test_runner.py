@@ -304,3 +304,13 @@ def test_per_question_missing_item_retries_then_fills_template():
 def test_attitude_has_no_verdict_or_score():
     report, _ = run(FakeLLM())
     assert set(report["attitude"]) == {"metrics", "advice", "quotes"}  # T-214
+
+
+def test_trace_records_each_call_with_timing():
+    _, ev = run(FakeLLM(delay=0.02))
+    targets = sorted(c["target"] for c in ev.trace.calls)
+    assert targets == ["attitude", "consistency", "job_fit", "per_question", "reviewer"]
+    review = next(c for c in ev.trace.calls if c["target"] == "reviewer")
+    first = [c for c in ev.trace.calls if c["target"] != "reviewer"]
+    assert all(c["ok"] and c["end"] >= c["start"] for c in ev.trace.calls)
+    assert review["start"] >= max(c["end"] for c in first) - 0.05  # 검증은 평가 4개가 끝난 뒤

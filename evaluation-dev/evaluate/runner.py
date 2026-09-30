@@ -16,6 +16,8 @@
 from __future__ import annotations
 
 import logging
+import threading
+import time
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -52,6 +54,7 @@ class Trace:
     """평가 품질 스크립트와 디버깅용 기록. 리포트에는 들어가지 않는다."""
 
     llm_calls: int = 0
+    calls: list[dict] = field(default_factory=list)  # 호출별 대상, 모델, 시작과 끝(실행 시작 기준 초), 토큰
     retried: list[str] = field(default_factory=list)
     issues: dict[str, list[str]] = field(default_factory=dict)
     fallback: list[str] = field(default_factory=list)
@@ -72,6 +75,8 @@ class Evaluator:
 
     def run(self, inp: EvalInput) -> dict:
         self.trace = Trace()
+        self._t0 = time.perf_counter()
+        self._lock = threading.Lock()
         ctx = _Context(inp)
         for step in ("attitude", "job_fit", "consistency"):
             self.on_step(step, "RUNNING")
@@ -97,11 +102,27 @@ class Evaluator:
 
     # ------------------------------------------------------------ LLM 호출과 검증
 
+    def _timed(self, target: str, role: str, system: str, prompt: str, schema, retry: bool):
+        start = time.perf_counter() - self._t0
+        ok = False
+        info = None
+        try:
+            out, info = self.llm.generate_json(role, system, prompt, schema)
+            ok = True
+            return out
+        finally:
+            rec = {"target": target, "retry": retry, "ok": ok, "start": round(start, 1),
+                   "end": round(time.perf_counter() - self._t0, 1),
+                   "model": getattr(info, "model", None), "attempts": getattr(info, "attempts", None),
+                   "input_tokens": getattr(info, "input_tokens", None),
+                   "output_tokens": getattr(info, "output_tokens", None)}
+            with self._lock:
+                self.trace.llm_calls += 1
+                self.trace.calls.append(rec)
+
     def _call(self, ctx: "_Context", target: str, feedback: list[str] | None):
         system, prompt, schema = ctx.request(target, feedback)
-        self.trace.llm_calls += 1
-        out, _ = self.llm.generate_json("evaluator", system, prompt, schema)
-        return out
+        return self._timed(target, "evaluator", system, prompt, schema, retry=feedback is not None)
 
     def _round(self, ctx, targets, outs, results, issues, feedback):
         def one(t):
@@ -124,9 +145,9 @@ class Evaluator:
             return
         payload = {t: ctx.last_out[t] for t in targets}
         try:
-            self.trace.llm_calls += 1
-            out, _ = self.llm.generate_json("validator", P.REVIEWER_SYSTEM,
-                                            P.reviewer_prompt(ctx.q_spoken, ctx.answers, payload), P.ReviewOut)
+            out = self._timed("reviewer", "validator", P.REVIEWER_SYSTEM,
+                              P.reviewer_prompt(ctx.q_spoken, ctx.answers, payload), P.ReviewOut,
+                              retry=bool(self.trace.retried))
         except LLMError as e:  # 검증 에이전트가 실패해도 코드 검증 결과로 진행
             log.warning("검증 에이전트 실패, 코드 검증 결과만 사용: %s", e)
             self.trace.reviewer_failed = True
