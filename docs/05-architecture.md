@@ -214,3 +214,72 @@ flowchart LR
 | LLM 인증 | 컨테이너 안에는 개인 gcloud 로그인이 없다. 제공사 확정 후 키나 서비스 계정 키 파일을 런타임에 주입하고, 이미지와 저장소에는 넣지 않는다. (미정) |
 | 프런트 환경변수 | `VITE_*`는 빌드 시점 값이라 바꾸면 프런트 이미지를 다시 빌드해야 한다. ([docs/07-dev-rules.md](07-dev-rules.md) 7절) |
 | 터널 | 발표 전 리허설에서 터널 주소로 마이크·카메라가 허용되는지 확인한다. 주소는 실행마다 바뀔 수 있다. (제안) |
+
+## 10. 백엔드 폴더 구조와 실행
+
+폴더 뼈대(W-02)의 기준이다. 구조는 C가 확인해 확정했다.
+
+### 전체 폴더 트리
+
+```text
+proof_interview/
+├─ backend/
+│  ├─ Dockerfile
+│  ├─ requirements.txt
+│  └─ app/
+│     ├─ main.py              FastAPI 앱 생성, 라우터 등록, CORS (C)
+│     ├─ api/                 엔드포인트 4개 (C)
+│     │  ├─ interviews.py     POST /api/interviews, GET /api/interviews/{id}
+│     │  ├─ answers.py        POST /api/interviews/{id}/answers
+│     │  └─ report.py         GET /api/interviews/{id}/report
+│     ├─ schemas/             Pydantic: state.py, api.py (C)
+│     ├─ graph/               준비 그래프·평가 그래프 연결 (C)
+│     ├─ audio/               녹음 수신 → STT → 파일 삭제 (C)
+│     ├─ store.py             세션 State 메모리 저장 (C)
+│     ├─ nodes/
+│     │  ├─ prep/             분석(A), 질문 생성(B) 노드
+│     │  └─ evaluate/         태도·직무 적합성·일관성 노드 (E)
+│     ├─ banks/               질문 은행 JSON (B)
+│     └─ validators/          질문 검증, 인용 검증 (B)
+├─ frontend/
+│  ├─ Dockerfile
+│  └─ src/
+│     ├─ api/                 client.ts, mock 전환 (D)
+│     ├─ pages/               화면 1~7
+│     └─ components/          progress, interview, report, upload
+├─ shared/
+│  └─ mock/                   mock JSON 6개 + 샘플 서류
+├─ docker-compose.yml         (C)
+├─ .env.example
+└─ docs/
+```
+
+### 엔드포인트와 파일 대응
+
+| API | 파일 | 하는 일 |
+|---|---|---|
+| `POST /api/interviews` | `api/interviews.py` | 세션 생성 → 준비 그래프를 백그라운드로 시작 → 201 |
+| `GET /api/interviews/{id}` | `api/interviews.py` | 상태, `steps`, 질문 5개 조회 |
+| `POST /api/interviews/{id}/answers` | `api/answers.py` | 녹음 저장 → `audio/`에 변환 요청 → 202 |
+| `GET /api/interviews/{id}/report` | `api/report.py` | 완성된 Report 조회 |
+
+### nodes와 graph의 역할
+
+| 폴더 | 역할 | 예 |
+|---|---|---|
+| `nodes/` | 작업 단위. 입력 State를 받아 일부를 채워 돌려주는 함수 하나 | `read_posting`, `questions`, `attitude` |
+| `graph/` | 연결. 노드 순서와 실패 시 재시도·fallback을 정의 | 준비 그래프(6단계), 평가 그래프(5단계) |
+
+노드는 다른 노드를 직접 부르지 않고, 순서는 `graph/`에서만 정한다. A·B·E는 자기 노드만 만들고 C가 그래프에 연결한다.
+
+### 백그라운드 작업과 실행
+
+- 준비 그래프, STT 변환, 평가 그래프는 응답을 보낸 뒤 FastAPI `BackgroundTasks`로 돌린다. (확정)
+- 세션은 메모리(`store.py`)에 있으므로 uvicorn 워커는 1개로 고정한다. (제안)
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+- Docker에서는 `docker compose up`으로 프런트와 함께 실행한다. 프런트 컨테이너가 `/api`를 `backend:8000`으로 프록시한다. (제안)
+- `api/` 3파일 분할, `store.py` 위치, `BackgroundTasks` 사용, 포트 8000은 확정이다. (확정)
