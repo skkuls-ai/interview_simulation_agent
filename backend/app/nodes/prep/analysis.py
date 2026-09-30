@@ -26,8 +26,10 @@ from typing import Callable, Protocol, TypeVar
 from pydantic import BaseModel
 
 from . import analysis_prompts as P
-from app.schemas.state import Analysis, Checkpoint, Claim, Requirement, RequirementLink
-from app.validators.quotes import QuoteMatch, compact_len, find_quote, normalize
+from app.schemas.state import Analysis, Checkpoint, Claim, Question, Requirement, RequirementLink
+from app.validators.quotes import find_quote, normalize
+from .competency_questions import build_competency_question_node
+from .technical_questions import build_technical_question_node
 
 log = logging.getLogger(__name__)
 
@@ -45,6 +47,8 @@ STEP_LABELS = {
     "read_resume": "이력서·자소서 읽는 중",
     "link": "공고와 경험 연결 중",
     "checkpoints": "검증 포인트 찾는 중",
+    "competency_questions": "직무 적합 인성 질문 고르는 중",
+    "technical_questions": "기술 면접 질문 만드는 중",
 }
 
 
@@ -62,6 +66,11 @@ class AnalysisReport:
     """분석 결과와 부가 정보. analysis 만 State 에 들어가고, 나머지는 화면 문구와 디버깅용입니다."""
 
     analysis: Analysis
+    competency_question_status: str = "insufficient_analysis"
+    competency_questions: list[Question] = field(default_factory=list)
+    competency_question_reasons: list[str] = field(default_factory=list)
+    technical_question_status: str = "insufficient_analysis"
+    technical_questions: list[Question] = field(default_factory=list)
     experience_count: int = 0
     requirement_quotes: dict[str, str] = field(default_factory=dict)  # RQ- → 원문 구절 (계약 밖, 채점·연결 표시용)
     issues: dict[str, list[str]] = field(default_factory=dict)  # 단계별 안전장치 기록
@@ -420,7 +429,7 @@ def run_analysis(
     cover_letter_text: str,
     on_step: StepCallback | None = None,
 ) -> AnalysisReport:
-    """준비 파이프라인 1~4단계. read_posting 과 read_resume 은 서로 독립이라 동시에 실행합니다."""
+    """준비 파이프라인. 문서 추출과 read_posting/read_resume 은 서로 독립이라 동시에 실행합니다."""
     step = on_step or (lambda *_: None)
     report = AnalysisReport(analysis=Analysis(requirements=[], claims=[], checkpoints=[], links=[]))
 
@@ -446,6 +455,40 @@ def run_analysis(
     step("checkpoints", "DONE", None)
 
     report.analysis = Analysis(requirements=requirements, claims=claims, checkpoints=cps, links=links)
+
+    step("competency_questions", "RUNNING", None)
+    try:
+        node_result = build_competency_question_node(llm)({"analysis": report.analysis})
+        report.competency_question_status = node_result["competency_question_status"]
+        report.competency_questions = node_result["competency_questions"]
+        report.competency_question_reasons = node_result["competency_question_reasons"]
+        reason = node_result["competency_question_reason"]
+        if report.competency_question_status == "insufficient_analysis":
+            report.issues.setdefault("competency_questions", []).append(reason)
+        detail = f"인성·역량 질문 {len(report.competency_questions)}개 선택" if report.competency_questions else reason
+    except Exception as e:
+        report.competency_question_status = "insufficient_analysis"
+        report.competency_questions = []
+        report.issues.setdefault("competency_questions", []).append(f"질문 선택 실패: {e}")
+        detail = "인성·역량 질문 선택 실패"
+    step("competency_questions", "DONE", detail)
+
+    step("technical_questions", "RUNNING", None)
+    try:
+        node_result = build_technical_question_node(llm)({"analysis": report.analysis})
+        report.technical_question_status = node_result["technical_question_status"]
+        report.technical_questions = node_result["technical_questions"]
+        reason = node_result["technical_question_reason"]
+        if report.technical_question_status == "insufficient_analysis":
+            report.issues.setdefault("technical_questions", []).append(reason)
+        detail = f"기술 질문 {len(report.technical_questions)}개 생성" if report.technical_questions else reason
+    except Exception as e:
+        report.technical_question_status = "insufficient_analysis"
+        report.technical_questions = []
+        report.issues.setdefault("technical_questions", []).append(f"질문 생성 실패: {e}")
+        detail = "기술 질문 생성 실패"
+    step("technical_questions", "DONE", detail)
+
     for name, msgs in report.issues.items():
         for msg in msgs:
             log.info("[%s] %s", name, msg)

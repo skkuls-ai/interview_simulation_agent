@@ -9,6 +9,7 @@ from app.schemas.api import (
     ReportResponse,
     SubmitAnswerResponse,
 )
+from app.validators.quotes import find_quote
 
 MOCK = Path(__file__).resolve().parents[2] / "shared" / "mock"
 
@@ -35,6 +36,15 @@ def test_report_mock_and_quotes():
     quotes = report.attitude.quotes + report.job_fit.quotes + report.consistency.quotes
     for q in quotes:
         assert answers[q.question_id][q.start:q.end] == q.text
+
+
+def test_quote_offsets_refer_to_original_decomposed_unicode_text():
+    source = "가abcdefgh"
+
+    match = find_quote("abcdefgh", source)
+
+    assert match is not None
+    assert source[match.start:match.end] == match.text == "abcdefgh"
 
 
 def test_questions_have_no_criteria():
