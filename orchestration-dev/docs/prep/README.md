@@ -13,7 +13,39 @@
 | W-07 | 화면 1 시작, 화면 2 서류 업로드 (mock) | 화 밤 | ☐ C의 뼈대(W-02, W-11) 대기 |
 | W-15 | 샘플 4종으로 `Analysis` 실제 생성 | 수 저녁 | ✅ 주장 11/11, 검증 포인트 6/7, 요구사항 공백 4/4, 20.4초 → [03 문서](03_W06_W15_새계약_서류분석.md) |
 | W-16 | 화면 1·2 → `POST /api/interviews` 연결 | 수 저녁 | ☐ |
-| W-28 | PDF·DOCX 추출, 입력 예외 처리 | 목 14시 | ☐ |
+| W-28 | PDF·DOCX 추출, 입력 예외 처리 (F-001) | 목 14시 | ✅ 통합에 필요해 당겨서 완료 → `backend/proof_prep/documents.py` (아래 설명) |
+
+### 서류 접수·텍스트 추출 (F-001, `documents.py`)
+
+C의 `POST /api/interviews` 핸들러는 이렇게 부르면 됩니다.
+
+```python
+from backend.proof_prep.documents import collect_documents, DocumentError
+from backend.proof_prep.analysis import run_analysis
+
+try:
+    docs = collect_documents(
+        files={"resume": (파일명, bytes), ...},      # <이름>_file 로 받은 것
+        texts={"job_posting": "...", ...},           # <이름>_text 로 받은 것
+        privacy_consent=form["privacy_consent"],
+    )
+except DocumentError as e:
+    return JSONResponse(status_code=422, content=e.to_body())   # {"error": {"code", "message", "field"}}
+
+state.update(docs.as_state_fields())   # resume_text, job_posting_text, job_description_text, cover_letter_text, consent_at
+# 백그라운드: run_analysis(llm, docs.resume_text, docs.job_posting_text, docs.job_description_text, docs.cover_letter_text, on_step=...)
+```
+
+| 항목 | 규칙 |
+|---|---|
+| 검사 순서 | 동의(`CONSENT_REQUIRED`) → 필수 서류(`MISSING_REQUIRED_DOC`, field) → 텍스트 추출(`TEXT_EXTRACTION_FAILED`, field) |
+| 형식 | PDF(pypdf), DOCX(문단 + 표, 병합 셀 중복 제거), TXT(UTF-8, BOM, **Windows 한글 cp949**) |
+| 미지원 | HWP·HWPX, 이미지 등 → 이유와 함께 "직접 입력" 안내 |
+| 크기·길이 | 파일 10MB, 텍스트 3만 자까지 |
+| 최소 글자 (제안) | 30자 미만이면 스캔 PDF 등으로 보고 `TEXT_EXTRACTION_FAILED` (docs 미정) |
+| 파일과 텍스트가 둘 다 오면 (제안) | 텍스트 우선 |
+| 텍스트 정리 | NFC, 줄 끝 공백·연속 빈 줄 정리, **줄 구조는 유지** (분석이 줄 단위로 읽음). 정리 후에도 정답 라벨 인용 18/18 그대로 찾음 |
+| 테스트 | `tests/test_proof_prep_documents.py` 21개 (docs/08 T-107·T-108·T-109·T-209·T-210) |
 
 mock 파일은 C의 저장소 뼈대가 올라오면 `shared/mock/`으로 옮깁니다. 자세한 내용은 [`data/demo/README.md`](../../data/demo/README.md).
 
