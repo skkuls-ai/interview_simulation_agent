@@ -109,6 +109,7 @@ Pydantic 원본: `backend/app/schemas/state.py`, `backend/app/schemas/api.py` (C
 | `job_fit`, `consistency` | `verdict`, `reason`, `quotes[]`, `refs[]` (RQ-/CL- ID) |
 | `per_question` | 질문별 `strengths`, `gaps`, `next_action`, `linked_claim_ids`, `linked_checkpoint_ids` |
 | `questions` | `question_id`, `type`, `text`, `answer_text` (화면 7이 다른 API를 부르지 않도록 동봉) |
+| `requirements` | `job_fit.refs`가 가리키는 요구사항만 `requirement_id`+`text`+`kind` (RQ- ID를 글로 보여주기 위해 동봉) |
 | `claims`, `checkpoints` | 연결 정보 표시용 `claim_id`+`text`, `checkpoint_id`+`title` |
 
 - 모든 `quotes`는 답변 텍스트에 실제로 있는 문장만 남기고, 없는 인용은 코드가 제거한다.
@@ -298,7 +299,7 @@ Docs 안의 모순·빈틈. 임의로 메우지 않고 팀 확인을 기다린�
 1. `FAILED` 재시도: 화면 3·6은 「다시 시도」 버튼과 「입력 서류 유지/답변 유지」를 요구하지만 재시도 API가 없다(API는 4개뿐). 화면 6의 재시도가 같은 세션 재평가인지 새 세션인지 미정.
 2. 「다시 연습하기」(같은 서류로 질문 재생성 후 화면 4로)에 대응하는 API가 없다. `POST /api/interviews`는 서류 4종을 다시 받는 형식이다.
 3. `GET /{id}` 응답의 `error` 필드는 State(`InterviewState`)에 없고 형식(code/message 여부)도 정의되지 않았다. `GET /{id}`, `GET /report`의 404 `SESSION_NOT_FOUND` 여부도 명시되지 않았다.
-4. `report.json`은 `Report` 모델(attitude, job_fit, consistency, per_question)에 `session_id`, `questions`, `claims`, `checkpoints`가 추가된 형태인데 응답용 모델이 State에 정의되어 있지 않다(`schemas/api.py`로 예상). `refs`의 `RQ-` ID 문구를 화면에 그릴 `requirements` 정보도 응답에 없다.
+4. `report.json`은 `Report` 모델에 `session_id`, `questions`, `requirements`, `claims`, `checkpoints`가 추가된 형태이며 응답용 모델은 `schemas/api.py`의 `ReportResponse`다. `requirements`는 `job_fit.refs`가 가리키는 요구사항만 담는다(확정).
 5. 요청 `delivery_metrics`(JSON 문자열)와 State `Answer.delivery`, 요청 `privacy_consent`와 State `consent_at`(서버가 시각 기록으로 추정), `words_per_min`/`filler_count`의 Should 여부가 이름·형식으로만 대응한다.
 6. `audio` 파일 형식은 webm이 예시로만 나오고 C↔D 조율 항목으로 남아 있다. 마이크가 끊겨 `audio`가 없을 때의 보내는 방식도 미정.
 7. 평가 시작 시점은 「마지막 답변과 STT 변환이 모두 끝난 뒤」인데, status는 마지막 답변 수신 즉시 `EVALUATING`이 된다. 변환 대기 중 상태 표시는 `steps[transcribe]`로 추정된다.

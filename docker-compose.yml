@@ -6,6 +6,9 @@ services:
         required: false
     expose:
       - "8000"
+    volumes:
+      # 가짜 진행기(graph/fake.py)가 읽는 mock. 진짜 그래프(W-20)로 바뀌면 제거
+      - ./shared/mock:/srv/shared/mock:ro
 
   frontend:
     build:
