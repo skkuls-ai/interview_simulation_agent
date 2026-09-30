@@ -23,11 +23,11 @@ python mock/build_report_mock.py      # mock 두 개 생성 + 검사
 | 값 | 규칙 | 근거 |
 | --- | --- | --- |
 | 군말 `filler_count` | 어, 음, 저기, 뭐랄까. 앞뒤가 한글이 아닐 때만 셈("어떤", "음식", "저기압"은 제외). 「그」는 세지 않음 | 9/29 STT 테스트: 받아쓰기 모델이 군말 8개 중 8개를 남김. 「그」는 쉼표가 사라져 "그 과정" 같은 일반 표현과 구분 불가 |
-| 분당 단어 수 `words_per_min` | 공백 기준 어절 수 합계 ÷ 답변 시간 합계(분), 정수 반올림 | perception 가이드 정의. 9/29 90초 녹음으로 확인: 146어절, 분당 97.3 |
+| 분당 단어 수 `words_per_min` | 공백 기준 어절 수 합계 ÷ 답변 시간 합계(분), 정수 반올림 | docs/archive/perception-integration-guide.md 정의. 9/29 90초 녹음으로 확인: 146어절, 분당 97.3 |
 | 말투 계산 대상 | 받아쓰기가 된 답변(`DONE`)만. 인식 실패(`NO_SPEECH`, `FAILED`)는 제외 | (제안) docs/04 확인 필요 10번 |
 | 시선 `frontal_ratio` | `measurable=true`인 답변만, 답변 시간으로 가중 평균 | 짧은 답변과 긴 답변이 같은 비중이 되지 않도록 |
 | 시선 `gaze_away_count` | 측정된 답변의 이탈 횟수 합계 | |
-| 측정 불가 | 측정된 답변이 없으면 `measurable=false`, 나머지 `null` | perception 계약과 같음 |
+| 측정 불가 | 측정된 답변이 없으면 `measurable=false`, 나머지 `null` | 프런트 `frontend/src/perception/types.ts`의 `DeliveryMetrics`와 같음 |
 | 시간 | 질문 5개 모두, 시간 초과 횟수 | 인식 실패 질문도 시간 목록에는 넣음 |
 
 - `enrich(answer)`: State의 `Answer.words_per_min`, `Answer.filler_count`를 채운다. C가 STT 직후에 부를지, E가 평가 시작 때 부를지는 C ↔ E에서 정한다.
@@ -35,6 +35,8 @@ python mock/build_report_mock.py      # mock 두 개 생성 + 검사
 - 시선 값은 참고 측정값이다. 판정이나 다른 영역 평가에 넘기지 않는다(T-213).
 
 ## D와 확정한 기준 (9/30 도연 님 답변)
+
+프런트 구현 위치: `feature/frontend`의 `frontend/src/perception/` (`config.ts`의 `gaze_away_min_ms: 1_000`, `types.ts`의 `DeliveryMetrics`). perception-dev 폴더는 없어졌다.
 
 | 항목 | 기준 | 계산에 미치는 영향 |
 | --- | --- | --- |
