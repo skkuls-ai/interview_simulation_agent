@@ -27,7 +27,7 @@ from pydantic import BaseModel
 
 from . import analysis_prompts as P
 from app.schemas.state import Analysis, Checkpoint, Claim, Question, Requirement, RequirementLink
-from app.validators.quotes import find_quote, normalize
+from app.validators.quotes import QuoteMatch, compact_len, find_quote, normalize
 from .competency_questions import build_competency_question_node
 from .technical_questions import build_technical_question_node
 
