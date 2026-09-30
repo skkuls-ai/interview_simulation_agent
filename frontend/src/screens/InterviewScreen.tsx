@@ -1,4 +1,4 @@
-import { Camera, Clock3, Mic, Volume2 } from "lucide-react";
+import { Clock3, Volume2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppShell } from "../components/AppShell";
 import { BrowserPerceptionController, type DeliveryMetrics } from "../perception";
@@ -13,12 +13,6 @@ export interface CapturedAnswer {
   timed_out: boolean;
   delivery_metrics: DeliveryMetrics;
 }
-
-const questionLabels: Record<InterviewQuestion["type"], string> = {
-  INTRO: "자기소개",
-  BEHAVIOR: "인성 질문",
-  TECH: "기술 질문",
-};
 
 interface InterviewScreenProps {
   question: InterviewQuestion;
@@ -189,7 +183,7 @@ export function InterviewScreen({ question, current, total, onAnswerComplete }: 
   return (
     <AppShell>
       <div className="interview-topbar">
-        <div><span className="question-kind">{questionLabels[question.type]}</span><strong>질문 {current}</strong><span className="question-total">/ {total}</span></div>
+        <div><strong>질문 {current}</strong><span className="question-total">/ {total}</span></div>
         <div className="interview-progress" aria-label={`면접 진행률 ${progress}`}><span style={{ width: progress }} /></div>
         <span className={`recording-state phase-${phase.toLowerCase()}`}><span className="live-dot" /> {phaseLabel}</span>
       </div>
@@ -197,7 +191,6 @@ export function InterviewScreen({ question, current, total, onAnswerComplete }: 
         <section className="question-card">
           {showOpening ? (
             <div className="interview-opening">
-              <span>Interview begins shortly</span>
               <h1>면접이 곧 시작됩니다.</h1>
               <p>편안한 자세로 화면을 바라보고 첫 번째 질문을 준비해 주세요.</p>
               {phase === "OPENING" ? <div className="opening-countdown"><strong>{openingCountdown}</strong><span>초 후 첫 질문이 나옵니다</span></div> : <div className="opening-countdown is-loading"><span>카메라와 마이크를 준비하고 있습니다</span></div>}
@@ -218,8 +211,7 @@ export function InterviewScreen({ question, current, total, onAnswerComplete }: 
         </section>
         <aside className="camera-preview interview-camera">
           <video className="camera-video" ref={videoRef} autoPlay muted playsInline />
-          <div className="camera-toolbar"><span><span className="live-dot" /> Camera</span><span>본인 화면</span></div>
-          <div className="media-controls"><span><Mic size={18} /></span><span><Camera size={18} /></span></div>
+          <div className="camera-toolbar"><span><span className="live-dot" /> 카메라</span><span>본인 화면</span></div>
         </aside>
       </div>
     </AppShell>

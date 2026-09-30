@@ -4,6 +4,7 @@ export type AppStep =
   | "PREPARING"
   | "DEVICE_CHECK"
   | "INTERVIEW"
+  | "INTERVIEW_END"
   | "EVALUATING"
   | "REPORT";
 

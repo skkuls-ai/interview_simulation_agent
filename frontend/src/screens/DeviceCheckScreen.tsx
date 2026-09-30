@@ -160,7 +160,7 @@ export function DeviceCheckScreen({ onComplete }: DeviceCheckScreenProps) {
           <div className="camera-badge"><Camera size={16} /> {cameraReady ? "카메라 화면 확인됨" : "카메라 확인 대기"}</div>
         </section>
         <section className="panel device-panel">
-          <div className="section-heading"><div><span className="eyebrow">Device check</span><h2>장치 상태</h2></div></div>
+          <div className="section-heading"><div><h2>장치 상태</h2></div></div>
           <div className="device-list">
             <div className="device-item"><span className="device-icon"><Camera size={20} /></span><div><strong>카메라</strong><p>실제 카메라 프레임이 재생되는지 확인합니다.</p></div><span className={`status-pill ${cameraReady ? "status-ready" : ""}`}>{cameraReady ? <><Check size={12} /> 정상</> : checking ? "확인 중" : "확인 필요"}</span></div>
             <div className="device-item"><span className="device-icon"><Mic size={20} /></span><div><strong>마이크</strong><p>{microphoneReady ? "실제 음성 입력을 확인했습니다." : microphoneConnected ? "마이크에 대고 짧게 말해보세요." : "마이크 연결과 권한을 확인합니다."}</p><div className="microphone-meter" aria-label={`마이크 입력 ${microphoneLevel}%`}><span style={{ width: `${microphoneLevel}%` }} /></div></div><span className={`status-pill ${microphoneReady ? "status-ready" : ""}`}>{microphoneReady && <Check size={12} />}{microphoneStatus}</span></div>

@@ -80,7 +80,6 @@ export function StartScreen({ onStart }: StartScreenProps) {
         </div>
 
         <div className="start-copy">
-          <span className="hero-kicker">AI INTERVIEW SIMULATOR</span>
           <h1><span>면접을 위한,</span><span>가장 확실한 연습.</span></h1>
           <p>내 경험에서 시작한 질문에 직접 답하며,<br className="desktop-break" /> 실전에서 꺼내 쓸 답변을 준비하세요.</p>
           <button className="button button-primary start-button" type="button" onClick={onStart}>
@@ -91,7 +90,6 @@ export function StartScreen({ onStart }: StartScreenProps) {
 
       <section className="start-values" aria-labelledby="start-values-title">
         <div className="value-intro">
-          <span>HOW IT WORKS</span>
           <h2 id="start-values-title">연습의 흐름은<br />단순하게.</h2>
         </div>
         <div className="value-list">

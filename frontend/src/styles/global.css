@@ -258,16 +258,6 @@ h1, h2, p { margin-top: 0; }
   text-align: center;
 }
 
-.app-main:has(.setup-layout) .page-heading::before {
-  content: "AI INTERVIEW SIMULATOR";
-  display: inline-block;
-  margin-bottom: 24px;
-  color: #6f6f6b;
-  font-size: 12px;
-  font-weight: 760;
-  letter-spacing: .13em;
-}
-
 .app-main:has(.setup-layout) .page-heading h1 {
   max-width: 880px;
   margin: 0 auto 28px;
@@ -446,7 +436,6 @@ h1, h2, p { margin-top: 0; }
   .app-header { height: 66px; }
   .header-inner { height: 100%; }
   .app-main:has(.setup-layout) .page-heading { min-height: 330px; margin: 18px auto 54px; }
-  .app-main:has(.setup-layout) .page-heading::before { margin-bottom: 18px; font-size: 10px; }
   .app-main:has(.setup-layout) .page-heading h1 { font-size: 40px; }
   .hero-keywords { height: 350px; inset: 24px -16px auto; }
   .hero-keyword { padding: 10px 13px; font-size: 11px; opacity: .92; }
@@ -789,4 +778,34 @@ h1, h2, p { margin-top: 0; }
   .step-progress { width: calc(100% - 32px); padding-top: 20px; }
   .step-progress li:not(.is-current) .step-label { display: none; }
   .step-progress li:not(:last-child)::after { margin: 0 8px; }
+}
+
+.end-screen { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; overflow: hidden; background: #f3f3f1; animation: end-in .9s ease both, end-out .6s ease 4.4s forwards; }
+.end-blob { position: absolute; border-radius: 50%; filter: blur(70px); opacity: .6; }
+.end-blob-a { width: 46vmax; height: 46vmax; left: -12vmax; top: -16vmax; background: #e0e0dd; animation: end-drift-a 9s ease-in-out infinite alternate; }
+.end-blob-b { width: 40vmax; height: 40vmax; right: -12vmax; bottom: -16vmax; background: #d8d8d5; animation: end-drift-b 11s ease-in-out infinite alternate; }
+.end-blob-c { width: 30vmax; height: 30vmax; left: 36%; top: 38%; background: #ececea; animation: end-drift-c 8s ease-in-out infinite alternate; }
+.end-content { position: relative; padding: 0 24px; text-align: center; }
+.end-check { width: 84px; height: 84px; margin: 0 auto 30px; display: block; fill: none; stroke: #141414; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.end-ring { stroke-dasharray: 277; stroke-dashoffset: 277; animation: end-draw 1s ease .3s forwards; }
+.end-tick { stroke-dasharray: 60; stroke-dashoffset: 60; animation: end-draw .5s ease 1s forwards; }
+.end-content h1 { margin: 0 0 12px; font-size: clamp(32px, 4vw, 48px); line-height: 1.2; letter-spacing: -.045em; font-weight: 780; opacity: 0; animation: end-rise .8s ease .6s forwards; }
+.end-content p { margin: 0 0 22px; color: #3a3a38; font-size: clamp(17px, 1.6vw, 21px); font-weight: 600; opacity: 0; animation: end-rise .8s ease .85s forwards; }
+.end-content small { color: var(--content-muted); font-size: 14px; opacity: 0; animation: end-rise .8s ease 1.1s forwards; }
+.end-progress { position: absolute; bottom: 56px; left: 50%; width: min(220px, 50vw); height: 3px; overflow: hidden; background: rgba(20, 20, 20, .1); border-radius: 99px; transform: translateX(-50%); }
+.end-progress span { display: block; height: 100%; background: #141414; border-radius: inherit; transform-origin: left; animation: end-fill 5s linear forwards; }
+
+@keyframes end-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes end-out { to { opacity: 0; } }
+@keyframes end-draw { to { stroke-dashoffset: 0; } }
+@keyframes end-rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes end-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes end-drift-a { to { transform: translate(8vmax, 6vmax) scale(1.15); } }
+@keyframes end-drift-b { to { transform: translate(-7vmax, -6vmax) scale(1.1); } }
+@keyframes end-drift-c { to { transform: translate(-6vmax, 4vmax) scale(1.25); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .end-blob, .end-progress span { animation: none; }
+  .end-ring, .end-tick { animation: none; stroke-dashoffset: 0; }
+  .end-content h1, .end-content p, .end-content small { animation: none; opacity: 1; }
 }

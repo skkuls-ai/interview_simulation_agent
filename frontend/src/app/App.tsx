@@ -4,6 +4,7 @@ import { mockQuestions, mockResult } from "../mocks/interview";
 import { AnalysisScreen } from "../screens/AnalysisScreen";
 import { DeviceCheckScreen } from "../screens/DeviceCheckScreen";
 import { EvaluationScreen } from "../screens/EvaluationScreen";
+import { InterviewEndScreen } from "../screens/InterviewEndScreen";
 import { InterviewScreen, type CapturedAnswer } from "../screens/InterviewScreen";
 import { ResultScreen } from "../screens/ResultScreen";
 import { SetupScreen } from "../screens/SetupScreen";
@@ -39,7 +40,7 @@ export function App() {
       setQuestionIndex((index) => index + 1);
       return;
     }
-    setStep("EVALUATING");
+    setStep("INTERVIEW_END");
   };
 
   const goToUpload = () => { setQuestionIndex(0); setStep("DOCUMENT_UPLOAD"); };
@@ -65,6 +66,8 @@ export function App() {
             onAnswerComplete={completeAnswer}
           />
         );
+      case "INTERVIEW_END":
+        return <InterviewEndScreen onComplete={() => setStep("EVALUATING")} />;
       case "EVALUATING":
         return <EvaluationScreen onComplete={() => setStep("REPORT")} />;
       case "REPORT":

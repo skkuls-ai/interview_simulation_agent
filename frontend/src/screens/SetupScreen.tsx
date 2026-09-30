@@ -62,7 +62,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
     <AppShell title="면접에 사용할 서류를 등록해 주세요" description="네 가지 자료를 바탕으로 지원 직무와 경험을 연결하고, 면접용 질문을 준비합니다.">
       <div className="upload-layout">
         <section className="panel setup-panel">
-          <div className="section-heading"><div><span className="eyebrow">Required documents</span><h2>필수 파일 업로드</h2></div><span className="section-count">필수 4개</span></div>
+          <div className="section-heading"><div><h2>필수 파일 업로드</h2></div><span className="section-count">필수 4개</span></div>
           <div className="document-list">
             <DocumentField title="이력서" description= "" icon={<FileText size={20} />} value={resume} onChange={setResume} />
             <DocumentField title="채용공고" description="" icon={<BriefcaseBusiness size={20} />} value={jobPosting} onChange={setJobPosting} />
@@ -76,7 +76,6 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
           <button className="button button-primary button-wide" type="button" disabled={!ready} onClick={() => onSubmit({ privacyConsent, resume, jobPosting, jobDescription, coverLetter })}>AI 분석 시작하기</button>
         </section>
         <aside className="setup-aside">
-          <span className="aside-kicker">Before you begin</span>
           <h2>등록 전에 확인해 주세요</h2>
           <ol className="guide-list">
             <li><span>01</span><div><strong>모든 자료는 필수예요</strong><p>파일 또는 텍스트 중 편한 방식으로 입력할 수 있습니다.</p></div></li>
