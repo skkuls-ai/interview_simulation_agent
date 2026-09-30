@@ -32,7 +32,7 @@ A의 데모 샘플(가상 지원자 김하늘, 가상 회사 브라이트런)을
 
 - 인용 `start`, `end`: 답변 원문에서 찾은 위치. `answer_text[start:end] == text`
 - 군말: 어, 음, 저기, 뭐랄까만 센다. 「그」는 세지 않는다 (9/29 STT 테스트)
-- 분당 단어 수 `words_per_min`: 공백 기준 어절 수 ÷ 답변 시간(분) (perception 가이드 정의). 답변 시간은 9/29 실측 속도(90초 녹음 146어절, 분당 97어절)에 맞춤
+- 분당 단어 수 `words_per_min`: 공백 기준 어절 수 ÷ 답변 시간(분) (docs/archive/perception-integration-guide.md 정의). 답변 시간은 9/29 실측 속도(90초 녹음 146어절, 분당 97어절)에 맞춤
 - 시선: `measurable=true`인 질문의 정면 유지 비율 평균, 이탈 횟수 합계
 - 시간 초과 횟수와 질문별 시간
 
@@ -47,7 +47,7 @@ docs/04 "확인 필요" 4, 10, 11번을 이렇게 채웠다.
 | `time.per_question` | 질문 5개 모두 담는다 |
 | 인식 실패 질문 (`report_edge.json`의 Q-3) | `answer_text=null`, 말투 계산(분당 어절, 군말)에서 제외, `per_question`은 `strengths`와 `gaps`를 빈 목록으로 두고 `next_action`에 안내 문구. 연결 정보는 유지 |
 | 판단 보류 (`report_edge.json`의 일관성) | `verdict=WITHHELD`, `quotes`와 `refs`는 빈 목록, `reason`에 보류 이유 |
-| 카메라 측정 불가 | `gaze`의 `measurable=false`, 나머지 두 값은 `null` (perception 계약과 같음) |
+| 카메라 측정 불가 | `gaze`의 `measurable=false`, 나머지 두 값은 `null` (프런트 `frontend/src/perception/types.ts`의 `DeliveryMetrics`와 같음) |
 
 ## 검사하는 규칙
 
