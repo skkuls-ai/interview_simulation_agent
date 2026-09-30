@@ -78,7 +78,7 @@ Docs 폴더 구조 기준. 소유자가 아닌 사람은 읽기만 하고, 고�
 
 | 경로 | 소유 |
 |---|---|
-| `backend/app/api/`, `graph/`, `audio/`, `schemas/` | C |
+| `backend/app/main.py`, `store.py`, `api/`, `graph/`, `audio/`, `schemas/`, `backend/requirements.txt` | C |
 | `backend/app/nodes/prep/` | A(분석), B(질문 생성) |
 | `backend/app/nodes/evaluate/` | E |
 | `backend/app/banks/` | B |

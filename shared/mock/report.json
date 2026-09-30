@@ -1,0 +1,219 @@
+{
+  "session_id": "S-3f2a9c1e",
+  "attitude": {
+    "metrics": {
+      "speech": {
+        "words_per_min": 138,
+        "filler_count": 12
+      },
+      "gaze": {
+        "measurable": true,
+        "frontal_ratio": 0.78,
+        "gaze_away_count": 9
+      },
+      "time": {
+        "timed_out_count": 1,
+        "per_question": [
+          {
+            "question_id": "Q-1",
+            "duration_sec": 72.1,
+            "timed_out": false
+          },
+          {
+            "question_id": "Q-2",
+            "duration_sec": 63.4,
+            "timed_out": false
+          },
+          {
+            "question_id": "Q-3",
+            "duration_sec": 90.0,
+            "timed_out": true
+          },
+          {
+            "question_id": "Q-4",
+            "duration_sec": 84.7,
+            "timed_out": false
+          },
+          {
+            "question_id": "Q-5",
+            "duration_sec": 58.2,
+            "timed_out": false
+          }
+        ]
+      }
+    },
+    "advice": [
+      "문장 끝을 「같습니다」로 흐리는 습관이 보여 단정하게 마무리해 보세요.",
+      "Q-3 답변이 1분 30초 제한에 걸려 끝맺지 못했습니다. 결론을 먼저 말하는 순서를 연습해 보세요."
+    ],
+    "quotes": [
+      {
+        "quote_id": "QT-001",
+        "question_id": "Q-2",
+        "text": "어 그러니까 음 팀에서 함께 했던 것 같습니다",
+        "start": 13,
+        "end": 38
+      }
+    ]
+  },
+  "job_fit": {
+    "verdict": "NEEDS_WORK",
+    "reason": "RAG 설계 경험은 설명했지만 공고의 LangGraph 요구사항과 연결하지 못했습니다.",
+    "quotes": [
+      {
+        "quote_id": "QT-002",
+        "question_id": "Q-4",
+        "text": "다만 LangGraph 같은 워크플로 도구는 써 보지 못했습니다.",
+        "start": 93,
+        "end": 129
+      }
+    ],
+    "refs": [
+      "RQ-004"
+    ]
+  },
+  "consistency": {
+    "verdict": "SUFFICIENT",
+    "reason": "자기소개에서 말한 RAG 검색 정확도 20% 개선이 서류의 주장과 같은 내용입니다.",
+    "quotes": [
+      {
+        "quote_id": "QT-003",
+        "question_id": "Q-1",
+        "text": "학부 프로젝트에서 사내 문서 질의응답 챗봇을 만들며 RAG 검색 정확도를 20% 개선한 경험이 있습니다.",
+        "start": 42,
+        "end": 100
+      }
+    ],
+    "refs": [
+      "CL-001"
+    ]
+  },
+  "per_question": [
+    {
+      "question_id": "Q-1",
+      "strengths": [
+        "지원 직무와 맞는 경험을 먼저 꺼내 놓았고, 서류의 20% 개선 주장과 같은 내용을 말했습니다."
+      ],
+      "gaps": [
+        "20%를 어떤 기준으로 쟀는지는 자기소개에서 언급하지 않았습니다."
+      ],
+      "next_action": "자기소개 끝에 측정 기준을 한 문장 덧붙여 보세요.",
+      "linked_claim_ids": [
+        "CL-001"
+      ],
+      "linked_checkpoint_ids": [
+        "CP-001"
+      ]
+    },
+    {
+      "question_id": "Q-2",
+      "strengths": [
+        "의견이 갈렸을 때 근거를 정리해 데이터로 비교했다는 결론이 분명합니다."
+      ],
+      "gaps": [
+        "누구와 어떤 의견이 갈렸는지 구체적인 상황 설명이 없습니다.",
+        "본인이 맡은 역할이 드러나지 않습니다."
+      ],
+      "next_action": "상황, 본인 역할, 결과 순서로 사례를 하나 정해 다시 연습해 보세요.",
+      "linked_claim_ids": [
+        "CL-002"
+      ],
+      "linked_checkpoint_ids": [
+        "CP-002"
+      ]
+    },
+    {
+      "question_id": "Q-3",
+      "strengths": [
+        "필수 기능부터 만든다는 우선순위 기준을 제시했습니다."
+      ],
+      "gaps": [
+        "시간 제한으로 답변이 끝나기 전에 넘어가 결과 설명이 없습니다."
+      ],
+      "next_action": "결론을 먼저 말하고 90초 안에 마무리하는 연습을 해 보세요.",
+      "linked_claim_ids": [],
+      "linked_checkpoint_ids": []
+    },
+    {
+      "question_id": "Q-4",
+      "strengths": [
+        "정답 문서가 상위 3개 안에 들어오는 비율이라는 측정 기준을 설명했습니다.",
+        "청크 크기 조정과 리랭커 추가라는 개선 방법을 구체적으로 말했습니다."
+      ],
+      "gaps": [
+        "공고가 우대하는 LangGraph 경험과 연결해 설명하지 못했습니다."
+      ],
+      "next_action": "개선 과정을 워크플로 단계로 나눠 설명하는 연습을 해 보세요.",
+      "linked_claim_ids": [
+        "CL-001"
+      ],
+      "linked_checkpoint_ids": [
+        "CP-001"
+      ]
+    },
+    {
+      "question_id": "Q-5",
+      "strengths": [
+        "상태를 하나의 객체로 두는 구조를 이해하고 있고, 재시도 후 기본값 처리라는 실패 대응 방안을 제시했습니다."
+      ],
+      "gaps": [
+        "직접 사용한 경험이 없다고 밝혀 실제 적용 사례가 없습니다."
+      ],
+      "next_action": "작은 예제로 LangGraph 노드 두 개를 직접 만들어 본 뒤 그 경험을 답변에 넣어 보세요.",
+      "linked_claim_ids": [],
+      "linked_checkpoint_ids": []
+    }
+  ],
+  "questions": [
+    {
+      "question_id": "Q-1",
+      "type": "INTRO",
+      "text": "1분 정도로 자기소개를 해 주세요. 지원 직무와 관련된 경험을 중심으로 말씀해 주세요.",
+      "answer_text": "안녕하세요, 검색 기반 AI 서비스를 만들어 온 신입 개발자 지원자입니다. 학부 프로젝트에서 사내 문서 질의응답 챗봇을 만들며 RAG 검색 정확도를 20% 개선한 경험이 있습니다. 청크 크기와 리랭킹을 바꿔 가며 평가용 질문 50개로 결과를 비교했습니다. 이 경험을 바탕으로 귀사의 AI 서비스 개발에 기여하고 싶습니다."
+    },
+    {
+      "question_id": "Q-2",
+      "type": "BEHAVIOR",
+      "text": "팀에서 의견이 갈렸을 때 어떻게 조율했는지 경험을 말씀해 주세요.",
+      "answer_text": "네, 말씀드리겠습니다. 어 그러니까 음 팀에서 함께 했던 것 같습니다. 의견이 갈렸을 때는 각자 근거를 정리해서 다시 이야기했던 것 같습니다. 결국 데이터로 비교해 결정했습니다."
+    },
+    {
+      "question_id": "Q-3",
+      "type": "BEHAVIOR",
+      "text": "일정이 촉박한 상황에서 우선순위를 정해 결과를 낸 경험이 있다면 말씀해 주세요.",
+      "answer_text": "일정이 촉박했던 팀 프로젝트에서 필수 기능부터 먼저 만들고 나머지는 뒤로 미루자고 제안했습니다. 그렇게 핵심 기능은 기한 안에 끝냈지만 마지막에는 테스트 시간이 부족해서"
+    },
+    {
+      "question_id": "Q-4",
+      "type": "TECH",
+      "text": "이력서에 RAG 검색 정확도를 20% 개선했다고 적으셨는데, 무엇을 기준으로 측정했고 어떤 방법으로 개선했는지 설명해 주세요.",
+      "answer_text": "정확도는 평가용 질문 50개에 대해 정답 문서가 상위 3개 안에 들어오는 비율로 측정했습니다. 청크 크기를 조정하고 리랭커를 추가해서 기존 대비 20% 높아졌습니다. 다만 LangGraph 같은 워크플로 도구는 써 보지 못했습니다."
+    },
+    {
+      "question_id": "Q-5",
+      "type": "TECH",
+      "text": "여러 단계로 이루어진 LLM 워크플로를 설계할 때 상태를 어떻게 관리하고 실패를 어떻게 처리하시겠습니까?",
+      "answer_text": "LangGraph는 직접 써 보지 않았지만 상태를 하나의 객체로 두고 각 노드가 읽고 쓰는 구조로 이해하고 있습니다. 실패한 노드는 한 번 재시도한 뒤 기본값으로 넘어가도록 설계하겠습니다."
+    }
+  ],
+  "claims": [
+    {
+      "claim_id": "CL-001",
+      "text": "RAG 검색 정확도를 20% 개선했습니다"
+    },
+    {
+      "claim_id": "CL-002",
+      "text": "팀 프로젝트에서 백엔드 API 설계와 일정 조율을 맡았습니다"
+    }
+  ],
+  "checkpoints": [
+    {
+      "checkpoint_id": "CP-001",
+      "title": "검색 정확도 20% 측정 기준"
+    },
+    {
+      "checkpoint_id": "CP-002",
+      "title": "팀 프로젝트 역할과 의견 조율 방식"
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "session_id": "S-3f2a9c1e",
+  "status": "READY",
+  "steps": [
+    {
+      "step_id": "read_posting",
+      "label": "채용공고 읽는 중",
+      "state": "DONE",
+      "detail": "요구사항 16개 확인"
+    },
+    {
+      "step_id": "read_resume",
+      "label": "이력서·자소서 읽는 중",
+      "state": "DONE",
+      "detail": "경험 7개, 확인할 주장 14개"
+    },
+    {
+      "step_id": "link",
+      "label": "공고와 경험 연결 중",
+      "state": "DONE",
+      "detail": null
+    },
+    {
+      "step_id": "checkpoints",
+      "label": "검증 포인트 찾는 중",
+      "state": "DONE",
+      "detail": null
+    },
+    {
+      "step_id": "questions",
+      "label": "질문 준비 중",
+      "state": "DONE",
+      "detail": null
+    },
+    {
+      "step_id": "review",
+      "label": "질문 검수 중",
+      "state": "DONE",
+      "detail": null
+    }
+  ],
+  "questions": [
+    {
+      "question_id": "Q-1",
+      "order": 1,
+      "type": "INTRO",
+      "text": "1분 정도로 자기소개를 해 주세요. 지원 직무와 관련된 경험을 중심으로 말씀해 주세요."
+    },
+    {
+      "question_id": "Q-2",
+      "order": 2,
+      "type": "BEHAVIOR",
+      "text": "팀에서 의견이 갈렸을 때 어떻게 조율했는지 경험을 말씀해 주세요."
+    },
+    {
+      "question_id": "Q-3",
+      "order": 3,
+      "type": "BEHAVIOR",
+      "text": "일정이 촉박한 상황에서 우선순위를 정해 결과를 낸 경험이 있다면 말씀해 주세요."
+    },
+    {
+      "question_id": "Q-4",
+      "order": 4,
+      "type": "TECH",
+      "text": "이력서에 RAG 검색 정확도를 20% 개선했다고 적으셨는데, 무엇을 기준으로 측정했고 어떤 방법으로 개선했는지 설명해 주세요."
+    },
+    {
+      "question_id": "Q-5",
+      "order": 5,
+      "type": "TECH",
+      "text": "여러 단계로 이루어진 LLM 워크플로를 설계할 때 상태를 어떻게 관리하고 실패를 어떻게 처리하시겠습니까?"
+    }
+  ]
+}
