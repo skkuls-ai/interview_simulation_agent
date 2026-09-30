@@ -4,6 +4,7 @@
     python scripts/run_demo_eval.py              # 실제 Gemini 1회 (backend 폴더에서)
     python scripts/run_demo_eval.py --repeat 3   # 3회 실행 후 판정 흔들림과 시간 요약
     python scripts/run_demo_eval.py --fake       # LLM 없이 흐름만 확인 (mock 문구를 그대로 돌려줌)
+    python scripts/run_demo_eval.py --mismatch --repeat 3   # 서류와 어긋난 답변을 잡아내는지 확인
 
 필요: gcloud auth application-default login, 환경변수 GOOGLE_CLOUD_PROJECT
 모델: INTERVIEW_MODEL_EVALUATOR (판정, MEDIUM), INTERVIEW_MODEL_COACH (조언과 질문별, LOW),
@@ -66,12 +67,29 @@ def print_run(i: int, report: dict, ev: Evaluator, elapsed: float, path: Path) -
     print(f"전체 결과: {path}")
 
 
+def mismatch_qa() -> list[dict]:
+    qa = [dict(q) for q in M.QA]
+    q4 = next(q for q in qa if q["question_id"] == "Q-4")
+    for a, b in (("평가용 질문 50개에 대해", "평가용 질문 100개에 대해"), ("50개 중 30개", "100개 중 60개"), ("36개로", "72개로")):
+        assert a in q4["answer_text"]
+        q4["answer_text"] = q4["answer_text"].replace(a, b)
+    return qa
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--fake", action="store_true", help="LLM 없이 실행")
     ap.add_argument("--no-review", action="store_true", help="검증 에이전트 없이 실행")
     ap.add_argument("--repeat", type=int, default=1, help="반복 실행 횟수 (판정 흔들림 확인)")
+    ap.add_argument("--mismatch", action="store_true",
+                    help="Q-4 답변의 평가용 질문 수를 서류(50개)와 다르게 바꿔 일관성이 NEEDS_WORK 로 잡히는지 확인")
     args = ap.parse_args()
+
+    qa = None
+    if args.mismatch:
+        qa = mismatch_qa()
+        EXPECTED["consistency"] = "NEEDS_WORK"
+        print("입력: --mismatch (Q-4 답변을 평가용 질문 100개 중 60개에서 72개로 바꿈, 서류는 50개)")
 
     if args.fake:
         make_llm, model = FakeLLM, "fake"
@@ -93,7 +111,7 @@ def main() -> None:
     for i in range(1, args.repeat + 1):
         ev = Evaluator(make_llm(), use_reviewer=not args.no_review)
         t0 = time.perf_counter()
-        report = ev.run(make_input())
+        report = ev.run(make_input(qa))
         elapsed = time.perf_counter() - t0
         path = out_dir / f"report_{stamp}_{i}.json"
         path.write_text(json.dumps({"report": report, "trace": ev.trace.__dict__}, ensure_ascii=False, indent=2),
