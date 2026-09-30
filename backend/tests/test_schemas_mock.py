@@ -46,3 +46,13 @@ def test_questions_have_no_criteria():
 def test_id_patterns():
     data = load("report.json")
     assert re.match(r"^S-[0-9a-f]{8}$", data["session_id"])
+
+
+def test_report_requirements_kept():
+    from app.schemas.api import ReportResponse
+
+    data = load("report.json")
+    data["requirements"] = [{"requirement_id": "RQ-004", "text": "LangGraph 경험", "kind": "SKILL"}]
+    report = ReportResponse.model_validate(data)
+    assert report.requirements[0].requirement_id == "RQ-004"
+    assert "requirements" in report.model_dump()
