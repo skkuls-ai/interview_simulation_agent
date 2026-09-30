@@ -14,7 +14,7 @@ import pytest
 
 from app.nodes.evaluate import prompts as P
 from app.schemas.state import Analysis, Answer, Checkpoint, Claim, DeliveryMetrics, Question, Requirement
-from app.nodes.evaluate.llm.client import LLMError
+from app.llm.client import LLMError
 from app.nodes.evaluate.runner import EvalInput, Evaluator
 
 MOCK_DIR = Path(__file__).parents[2] / "shared" / "mock"
@@ -184,6 +184,16 @@ def test_quotes_positions_match_answer_text():
     assert all(answers[q["question_id"]][q["start"]:q["end"]] == q["text"] for q in quotes)
 
 
+def test_quote_with_added_punctuation_is_found_in_stt_text():
+    """STT 원문에는 문장부호가 적고 LLM 은 인용에 붙이기 쉬움. validators/quotes 규칙으로 찾고, 원문 구간을 쓴다."""
+    base = mock_outputs()["job_fit"]
+    llm_quote = "다만, LangGraph 같은 워크플로 도구는 써 보지 못했습니다."
+    report, ev = run(FakeLLM({"job_fit": [with_(base, quotes=[ref("Q-4", llm_quote)])]}))
+    q = report["job_fit"]["quotes"][0]
+    answer = next(x["answer_text"] for x in report["questions"] if x["question_id"] == "Q-4")
+    assert not ev.trace.retried and answer[q["start"]:q["end"]] == q["text"] == "다만 LangGraph 같은 워크플로 도구는 써 보지 못했습니다"
+
+
 def test_verdict_without_evidence_becomes_withheld_after_retry():
     bad = with_(mock_outputs()["consistency"], quotes=[ref("Q-1", "지어낸 문장입니다 정말로")])
     report, ev = run(FakeLLM({"consistency": [bad, bad]}))
@@ -338,8 +348,8 @@ def test_trace_records_each_call_with_timing():
 
 def test_rate_limited_call_waits_then_retries(monkeypatch):
     pytest.importorskip("google.genai")
-    from app.nodes.evaluate.llm import client as C
-    from app.nodes.evaluate.llm.settings import LLMSettings
+    from app.llm import client as C
+    from app.llm.settings import LLMSettings
 
     class Resp:
         text = '{"items": []}'
@@ -366,7 +376,7 @@ def test_rate_limited_call_waits_then_retries(monkeypatch):
 
 
 def test_role_settings_for_e():
-    from app.nodes.evaluate.llm.settings import LLMSettings
+    from app.llm.settings import LLMSettings
 
     s = LLMSettings(project="p")
     assert s.role("validator").model == "gemini-3.8-flash" and s.role("validator").timeout_sec == 15
@@ -376,7 +386,7 @@ def test_role_settings_for_e():
 
 
 def test_thinking_level_env_override(monkeypatch):
-    from app.nodes.evaluate.llm.settings import LLMSettings
+    from app.llm.settings import LLMSettings
 
     monkeypatch.setenv("INTERVIEW_THINKING_EVALUATOR", "medium")
     s = LLMSettings.from_env()

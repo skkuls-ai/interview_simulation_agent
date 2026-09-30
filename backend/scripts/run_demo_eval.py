@@ -94,8 +94,8 @@ def main() -> None:
     if args.fake:
         make_llm, model = FakeLLM, "fake"
     else:
-        from app.nodes.evaluate.llm.client import GeminiClient
-        from app.nodes.evaluate.llm.settings import LLMSettings
+        from app.llm.client import GeminiClient
+        from app.llm.settings import LLMSettings
 
         settings = LLMSettings.from_env()
         client = GeminiClient(settings)

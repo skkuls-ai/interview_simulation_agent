@@ -13,7 +13,7 @@ record.report_response = ReportResponse.model_validate(report)
 
 - 부르는 시점: 답변 5개의 `transcript_status`가 모두 `PENDING`이 아니게 된 뒤 (STT 대기 제한 30초, 넘으면 `FAILED`로 두고 시작)
 - `on_step`으로 화면 6의 `attitude`, `job_fit`, `consistency`, `compose` 단계를 기록한다. `transcribe`는 C의 몫
-- `llm`: `llm/client.py`의 `GeminiClient(LLMSettings.from_env())`
+- `llm`: 공용 `app/llm/client.py`의 `GeminiClient(LLMSettings.from_env())` (A와 같은 클라이언트, 역할만 다름)
 
 ## 네 단계를 러너 하나가 처리하는 이유
 
@@ -36,8 +36,8 @@ docs/05 10절은 노드 순서를 `graph/`에서 정하게 되어 있지만, 평
 | `rules.py` | 코드 판정 규칙: 인용 위치 검사, refs 검사, 근거 없으면 WITHHELD, 금지 표현 |
 | `prompts.py` | 프롬프트와 LLM 출력 모양 (초안, 실측 보며 다듬는 중) |
 | `attitude.py` | 태도 측정값 계산 (군말, 분당 어절, 시선, 시간). LLM 안 씀 |
-| `quotes.py` | 인용 찾기 **임시 구현**. B의 `validators/` 인용 검증이 나오면 교체 |
-| `llm/` | Gemini 클라이언트 (역할별 모델, 재시도, 429 대기). 공용 위치가 정해지면 이동 |
+| (공용) `app/validators/quotes.py` | 인용 찾기. 공백과 문장부호를 빼고 비교, 8자 미만 거부 (A 작성, B가 검증 규칙 합칠 예정) |
+| (공용) `app/llm/` | Gemini 클라이언트. E 역할 `evaluator`, `coach`, `validator` 설정과 429 대기 포함 |
 
 ## 코드 판정 규칙
 

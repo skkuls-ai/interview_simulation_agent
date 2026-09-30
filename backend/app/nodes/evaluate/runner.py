@@ -30,8 +30,8 @@ from . import prompts as P
 from . import rules as R
 from .attitude import attitude_metrics
 from ...schemas.state import Analysis, Answer, InterviewState, Question
-from .llm.client import JsonLLM, LLMError
-from .quotes import QuoteFinder, find_quote
+from ...llm.client import JsonLLM, LLMError
+from .rules import QuoteFinder, find_quote
 
 log = logging.getLogger(__name__)
 
