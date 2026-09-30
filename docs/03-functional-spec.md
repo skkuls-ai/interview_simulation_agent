@@ -137,7 +137,7 @@ stateDiagram-v2
 
 - 입력: `Question`, `Answer`, 연결된 `Claim`·`Checkpoint`. 출력: `QuestionFeedback { question_id, strengths[], gaps[], next_action, linked_claim_ids[], linked_checkpoint_ids[] }`. 규칙: 기술 이해는 여기에만 둔다. 연결 정보는 서류에서 나온 질문에만 표시(제안). 예외: `NO_SPEECH`/`FAILED`면 `answer_text=null`, 「답변이 기록되지 않았습니다」.
 
-### F-013 인용 코드 검증 (담당 E)
+### F-013 인용 코드 검증 (담당 B, 호출은 E)
 
 | 항목 | 내용 |
 | --- | --- |

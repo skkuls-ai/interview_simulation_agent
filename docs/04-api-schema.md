@@ -287,7 +287,7 @@ erDiagram
 | `checkpoint_id` | `CP-` + 3자리 | CP-001 | 지원자 분석 후처리 (A) |
 | `question_id` | `Q-1` ~ `Q-5`, 고정 순서 | Q-4 | 질문 계획 (B) |
 | `question_bank_id` | 기술 `TECH-주제-3자리`, 인성 `COMP-역량-3자리` | TECH-RAG-001 | 질문 은행 JSON (B) |
-| `quote_id` | `QT-` + 3자리 | QT-007 | 인용 검증기 (E) |
+| `quote_id` | `QT-` + 3자리 | QT-007 | 인용 검증기 (B) |
 
 질문 고정 순서: Q-1 INTRO(자기소개), Q-2 BEHAVIOR(인성), Q-3 BEHAVIOR(인성), Q-4 TECH(기술), Q-5 TECH(기술).
 

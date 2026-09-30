@@ -179,10 +179,10 @@ sequenceDiagram
 | 담당 | 백엔드 | 화면 |
 |---|---|---|
 | A 서류 입력·분석 | nodes/prep (분석) | 1, 2 |
-| B 질문 준비·로딩 | nodes/prep (질문), banks, validators | 3, 6 (단계 진행 컴포넌트) |
-| C 세션·통합 | schemas, graph, api, audio | 프런트 뼈대, api/client.ts |
-| D 면접 화면 | (프런트 시선 계산) | 4, 5 |
-| E 피드백 | nodes/evaluate, validators(인용) | 7 |
+| B 질문 준비·로딩 | nodes/prep (질문), banks, validators (질문·인용) | 3, 6 (단계 진행 컴포넌트) |
+| C 세션·통합 | schemas, graph, api, audio | (없음) |
+| D 면접 화면·전체 UI | (프런트 시선 계산) | 프런트 뼈대, api/client.ts, 4, 5 |
+| E 피드백 | nodes/evaluate (인용 검증 함수는 B의 validators를 호출) | 7 |
 
 ## 8. 확인 필요
 
