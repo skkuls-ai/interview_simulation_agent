@@ -1,5 +1,6 @@
 import { ScanFace, ShieldCheck } from "lucide-react";
 import type { PropsWithChildren } from "react";
+import { StepProgress } from "./StepProgress";
 
 interface AppShellProps extends PropsWithChildren {
   title?: string;
@@ -21,6 +22,7 @@ export function AppShell({ title, description, children }: AppShellProps) {
           </div>
         </div>
       </header>
+      <StepProgress />
       <main className="app-main">
         {(title || description) && (
           <div className="page-heading">

@@ -772,3 +772,21 @@ h1, h2, p { margin-top: 0; }
   .review-columns { grid-template-columns: 1fr; }
   .result-actions { align-items: stretch; flex-direction: column-reverse; }
 }
+
+.step-progress { width: min(1440px, calc(100% - 64px)); margin: 0 auto; padding: 28px 0 0; }
+.step-progress ol { margin: 0; padding: 0; list-style: none; display: flex; align-items: center; }
+.step-progress li { display: flex; align-items: center; gap: 10px; color: var(--content-disabled); font-size: 13px; font-weight: 650; white-space: nowrap; }
+.step-progress li:not(:last-child) { flex: 1; }
+.step-progress li:not(:last-child)::after { content: ""; flex: 1; height: 1px; margin: 0 16px; background: var(--border-regular); }
+.step-mark { width: 26px; height: 26px; display: grid; place-items: center; flex: none; border: 1px solid var(--border-strong); border-radius: 50%; background: var(--bg-surface); font-size: 12px; font-weight: 700; }
+.step-progress .is-done { color: var(--content-muted); }
+.step-progress .is-done::after { background: var(--primary); }
+.step-progress .is-done .step-mark { border-color: var(--primary); background: var(--primary); color: #fff; }
+.step-progress .is-current { color: var(--content-base); }
+.step-progress .is-current .step-mark { border-color: var(--primary); background: var(--primary); color: #fff; box-shadow: var(--shadow-focus); }
+
+@media (max-width: 680px) {
+  .step-progress { width: calc(100% - 32px); padding-top: 20px; }
+  .step-progress li:not(.is-current) .step-label { display: none; }
+  .step-progress li:not(:last-child)::after { margin: 0 8px; }
+}

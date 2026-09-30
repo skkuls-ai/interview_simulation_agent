@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { StepContext } from "../components/StepProgress";
 import { mockQuestions, mockResult } from "../mocks/interview";
 import { AnalysisScreen } from "../screens/AnalysisScreen";
 import { DeviceCheckScreen } from "../screens/DeviceCheckScreen";
@@ -16,6 +17,10 @@ export function App() {
   const [step, setStep] = useState<AppStep>("START");
   const [questionIndex, setQuestionIndex] = useState(0);
   const [sessionId, setSessionId] = useState<string | null>(null);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [step, questionIndex]);
 
   const startAnalysis = async (setup: SessionSetup) => {
     if (!USE_MOCK) {
@@ -40,28 +45,32 @@ export function App() {
   const goToUpload = () => { setQuestionIndex(0); setStep("DOCUMENT_UPLOAD"); };
   const retryInterview = () => { setQuestionIndex(0); setStep("DEVICE_CHECK"); };
 
-  switch (step) {
-    case "START":
-      return <StartScreen onStart={() => setStep("DOCUMENT_UPLOAD")} />;
-    case "DOCUMENT_UPLOAD":
-      return <SetupScreen onSubmit={startAnalysis} />;
-    case "PREPARING":
-      return <AnalysisScreen onComplete={() => setStep("DEVICE_CHECK")} />;
-    case "DEVICE_CHECK":
-      return <DeviceCheckScreen onComplete={() => setStep("INTERVIEW")} />;
-    case "INTERVIEW":
-      return (
-        <InterviewScreen
-          key={mockQuestions[questionIndex].question_id}
-          question={mockQuestions[questionIndex]}
-          current={questionIndex + 1}
-          total={mockQuestions.length}
-          onAnswerComplete={completeAnswer}
-        />
-      );
-    case "EVALUATING":
-      return <EvaluationScreen onComplete={() => setStep("REPORT")} />;
-    case "REPORT":
-      return <ResultScreen result={mockResult} onRetry={retryInterview} onRestart={goToUpload} />;
-  }
+  const renderStep = () => {
+    switch (step) {
+      case "START":
+        return <StartScreen onStart={() => setStep("DOCUMENT_UPLOAD")} />;
+      case "DOCUMENT_UPLOAD":
+        return <SetupScreen onSubmit={startAnalysis} />;
+      case "PREPARING":
+        return <AnalysisScreen onComplete={() => setStep("DEVICE_CHECK")} />;
+      case "DEVICE_CHECK":
+        return <DeviceCheckScreen onComplete={() => setStep("INTERVIEW")} />;
+      case "INTERVIEW":
+        return (
+          <InterviewScreen
+            key={mockQuestions[questionIndex].question_id}
+            question={mockQuestions[questionIndex]}
+            current={questionIndex + 1}
+            total={mockQuestions.length}
+            onAnswerComplete={completeAnswer}
+          />
+        );
+      case "EVALUATING":
+        return <EvaluationScreen onComplete={() => setStep("REPORT")} />;
+      case "REPORT":
+        return <ResultScreen result={mockResult} onRetry={retryInterview} onRestart={goToUpload} />;
+    }
+  };
+
+  return <StepContext.Provider value={step}>{renderStep()}</StepContext.Provider>;
 }
