@@ -216,7 +216,8 @@ class Evaluator:
                 o = per_q_llm[q.question_id]
                 linked += o.extra_claim_ids
                 item = {"strengths": o.strengths, "gaps": o.gaps,
-                        "next_action": o.next_action if not R.forbidden(o.next_action) else FAILED_NEXT_ACTION}
+                        "next_action": o.next_action if not R.bad_advice(o.next_action, content_only=True)
+                        else FAILED_NEXT_ACTION}
             else:
                 self.trace.fallback.append(f"per_question:{q.question_id}")
                 item = {"strengths": [], "gaps": [], "next_action": FAILED_NEXT_ACTION}
