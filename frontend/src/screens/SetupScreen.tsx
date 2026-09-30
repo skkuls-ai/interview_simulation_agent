@@ -59,15 +59,15 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
   const ready = privacyConsent && [resume, jobPosting, jobDescription, coverLetter].every(isFilled);
 
   return (
-    <AppShell title="면접에 사용할 서류를 등록해 주세요" description="네 가지 자료를 바탕으로 지원 직무와 경험을 연결하고, 맞춤 질문 다섯 개를 준비합니다.">
+    <AppShell title="면접에 사용할 서류를 등록해 주세요" description="네 가지 자료를 바탕으로 지원 직무와 경험을 연결하고, 면접용 질문을 준비합니다.">
       <div className="upload-layout">
         <section className="panel setup-panel">
-          <div className="section-heading"><div><span className="eyebrow">Required documents</span><h2>지원 자료</h2></div><span className="section-count">필수 4개</span></div>
+          <div className="section-heading"><div><span className="eyebrow">Required documents</span><h2>필수 파일 업로드</h2></div><span className="section-count">필수 4개</span></div>
           <div className="document-list">
-            <DocumentField title="이력서" description="경력과 프로젝트 경험을 확인합니다." icon={<FileText size={20} />} value={resume} onChange={setResume} />
-            <DocumentField title="채용공고" description="회사와 인재상, 모집 내용을 확인합니다." icon={<BriefcaseBusiness size={20} />} value={jobPosting} onChange={setJobPosting} />
-            <DocumentField title="직무기술서" description="담당 업무와 필요 역량을 확인합니다." icon={<BriefcaseBusiness size={20} />} value={jobDescription} onChange={setJobDescription} />
-            <DocumentField title="자기소개서" description="서류의 주장과 면접 답변을 비교합니다." icon={<ScrollText size={20} />} value={coverLetter} onChange={setCoverLetter} />
+            <DocumentField title="이력서" description= "" icon={<FileText size={20} />} value={resume} onChange={setResume} />
+            <DocumentField title="채용공고" description="" icon={<BriefcaseBusiness size={20} />} value={jobPosting} onChange={setJobPosting} />
+            <DocumentField title="직무기술서" description="" icon={<BriefcaseBusiness size={20} />} value={jobDescription} onChange={setJobDescription} />
+            <DocumentField title="자기소개서" description="" icon={<ScrollText size={20} />} value={coverLetter} onChange={setCoverLetter} />
           </div>
           <label className="consent-row">
             <input type="checkbox" checked={privacyConsent} onChange={(event) => setPrivacyConsent(event.target.checked)} />

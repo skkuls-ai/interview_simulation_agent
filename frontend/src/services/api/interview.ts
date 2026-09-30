@@ -1,16 +1,11 @@
 import type { InterviewQuestion, InterviewResult, SessionSetup } from "../../types/interview";
+import type { DeliveryMetrics } from "../../perception";
 import { apiRequest } from "./client";
 
 export interface InterviewStatusResponse {
   status: "PREPARING" | "READY" | "IN_PROGRESS" | "EVALUATING" | "COMPLETED" | "FAILED";
   steps: Array<{ step_id: string; label: string; state: "PENDING" | "RUNNING" | "DONE"; detail: string | null }>;
   questions: InterviewQuestion[] | null;
-}
-
-export interface DeliveryMetrics {
-  measurable: boolean;
-  frontal_ratio: number | null;
-  gaze_away_count: number | null;
 }
 
 export async function createSession(setup: SessionSetup) {
@@ -41,7 +36,11 @@ export async function submitAnswer(sessionId: string, input: { question_id: stri
   form.set("timed_out", String(input.timed_out));
   form.set("delivery_metrics", JSON.stringify(input.delivery_metrics));
   if (input.audio) form.set("audio", input.audio, "answer.webm");
-  return apiRequest<{ question_id: string; received: boolean; next_question_id: string | null; status: "IN_PROGRESS" | "EVALUATING" }>(`/api/interviews/${encodeURIComponent(sessionId)}/answers`, { method: "POST", body: form });
+  return apiRequest<{ question_id: string; received: boolean; next_question_id: string | null; status: "IN_PROGRESS" | "EVALUATING" }>(
+    `/api/interviews/${encodeURIComponent(sessionId)}/answers`,
+    { method: "POST", body: form },
+    { retryCount: 1 },
+  );
 }
 
 export function getReport(sessionId: string) {

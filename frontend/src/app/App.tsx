@@ -3,22 +3,33 @@ import { mockQuestions, mockResult } from "../mocks/interview";
 import { AnalysisScreen } from "../screens/AnalysisScreen";
 import { DeviceCheckScreen } from "../screens/DeviceCheckScreen";
 import { EvaluationScreen } from "../screens/EvaluationScreen";
-import { InterviewScreen } from "../screens/InterviewScreen";
+import { InterviewScreen, type CapturedAnswer } from "../screens/InterviewScreen";
 import { ResultScreen } from "../screens/ResultScreen";
 import { SetupScreen } from "../screens/SetupScreen";
 import { StartScreen } from "../screens/StartScreen";
+import { createSession, submitAnswer } from "../services/api/interview";
 import type { AppStep, SessionSetup } from "../types/interview";
+
+const USE_MOCK = import.meta.env.VITE_USE_MOCK !== "false";
 
 export function App() {
   const [step, setStep] = useState<AppStep>("START");
   const [questionIndex, setQuestionIndex] = useState(0);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
-  const startAnalysis = (_setup: SessionSetup) => {
-    // API 연결 후에는 여기서 세션을 만들고 session_id를 저장합니다.
+  const startAnalysis = async (setup: SessionSetup) => {
+    if (!USE_MOCK) {
+      const session = await createSession(setup);
+      setSessionId(session.session_id);
+    }
     setStep("PREPARING");
   };
 
-  const completeAnswer = () => {
+  const completeAnswer = async (answer: CapturedAnswer) => {
+    const question = mockQuestions[questionIndex];
+    if (!USE_MOCK && sessionId) {
+      await submitAnswer(sessionId, { question_id: question.question_id, ...answer });
+    }
     if (questionIndex < mockQuestions.length - 1) {
       setQuestionIndex((index) => index + 1);
       return;
