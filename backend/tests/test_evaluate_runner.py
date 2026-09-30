@@ -374,6 +374,18 @@ def test_role_settings_for_e():
     assert s.role("coach").thinking_level == "LOW" and s.role("evaluator").thinking_level == "MEDIUM"
 
 
+def test_thinking_level_env_override(monkeypatch):
+    from app.nodes.evaluate.llm.settings import LLMSettings
+
+    monkeypatch.setenv("INTERVIEW_THINKING_EVALUATOR", "low")
+    s = LLMSettings.from_env()
+    assert s.role("evaluator").thinking_level == "LOW" and s.role("evaluator").timeout_sec == 60
+    assert s.role("coach").thinking_level == "LOW" and s.role("validator").thinking_level == "LOW"
+    monkeypatch.setenv("INTERVIEW_THINKING_EVALUATOR", "FAST")
+    with pytest.raises(Exception):
+        LLMSettings.from_env()
+
+
 # ------------------------------------------------------------------ graph/ 연결 진입점
 
 

@@ -14,6 +14,7 @@
 모델
     GEMINI_MODEL              기본 모델 (검증 역할 제외 전체). 기본 gemini-3.8-flash
     INTERVIEW_MODEL_<ROLE>    역할별 덮어쓰기. 예: INTERVIEW_MODEL_VALIDATOR=gemini-3.7-flash
+    INTERVIEW_THINKING_<ROLE> 역할별 추론 수준 덮어쓰기 (LOW, MEDIUM, HIGH). 예: INTERVIEW_THINKING_EVALUATOR=LOW
 """
 
 from __future__ import annotations
@@ -79,7 +80,9 @@ class LLMSettings(BaseModel):
                     s.roles[role] = cfg.model_copy(update={"model": base})
         for role, cfg in s.roles.items():
             if m := os.environ.get(f"INTERVIEW_MODEL_{role.upper()}"):
-                s.roles[role] = cfg.model_copy(update={"model": m})
+                s.roles[role] = cfg = cfg.model_copy(update={"model": m})
+            if t := os.environ.get(f"INTERVIEW_THINKING_{role.upper()}", "").strip().upper():
+                s.roles[role] = RoleSettings.model_validate({**cfg.model_dump(), "thinking_level": t})  # 틀린 값은 오류
         return s
 
     def role(self, name: str) -> RoleSettings:

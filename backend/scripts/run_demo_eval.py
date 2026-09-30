@@ -82,7 +82,8 @@ def main() -> None:
         settings = LLMSettings.from_env()
         client = GeminiClient(settings)
         make_llm = lambda: client  # noqa: E731
-        model = f"{settings.role('evaluator').model} / 검증 {settings.role('validator').model}"
+        model = ", ".join(f"{r} {settings.role(r).model} {settings.role(r).thinking_level}"
+                          for r in ("evaluator", "coach", "validator"))
     print(f"모델: {model}, {args.repeat}회 실행")
 
     out_dir = ROOT / "var" / "eval"
