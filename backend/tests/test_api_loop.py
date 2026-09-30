@@ -116,3 +116,17 @@ def test_delivery_metrics_stored(client):
     answer(client, sid, "Q-1", delivery_metrics=json.dumps({"measurable": True, "frontal_ratio": 0.8, "gaze_away_count": 2}))
     a = store.get(sid).state.answers[0]
     assert a.delivery.frontal_ratio == 0.8 and a.delivery.gaze_away_count == 2
+
+
+def test_evaluating_shows_evaluate_steps_immediately(client, monkeypatch):
+    # 마지막 답변을 받은 직후(변환·평가가 끝나기 전)에도 steps는 준비 단계가 아니라 평가 단계여야 한다
+    import app.api.answers as answers
+    monkeypatch.setattr(answers, "run_evaluate", lambda *a, **k: None)
+    monkeypatch.setattr(answers, "transcribe_and_delete", lambda *a, **k: None)
+    sid = create(client).json()["session_id"]
+    for qid in ["Q-1", "Q-2", "Q-3", "Q-4", "Q-5"]:
+        answer(client, sid, qid)
+    body = client.get(f"/api/interviews/{sid}").json()
+    assert body["status"] == "EVALUATING"
+    assert [s["step_id"] for s in body["steps"]] == ["transcribe", "attitude", "job_fit", "consistency", "compose"]
+    assert body["steps"][0]["state"] == "RUNNING"

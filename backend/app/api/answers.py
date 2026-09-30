@@ -7,8 +7,9 @@ from fastapi import APIRouter, BackgroundTasks, File, Form, UploadFile
 from ..audio import transcribe_and_delete
 from ..errors import ApiError
 from ..graph import run_evaluate
+from ..graph.evaluate import STEPS as EVALUATE_STEPS
 from ..schemas.api import DeliveryMetricsInput, SubmitAnswerResponse
-from ..schemas.state import Answer, DeliveryMetrics, SessionStatus, TranscriptStatus
+from ..schemas.state import Answer, DeliveryMetrics, SessionStatus, Step, StepState, TranscriptStatus
 from ..store import store
 
 router = APIRouter(prefix="/api/interviews")
@@ -61,6 +62,10 @@ async def submit_answer(
             transcript_status=TranscriptStatus.PENDING,
         ))
         state.status = status
+        if status == SessionStatus.EVALUATING:
+            # 답변 변환이 끝나 평가가 시작되기 전에도 화면 6이 평가 단계를 보이게 한다
+            state.steps = [Step(step_id=i, label=label, state=StepState.RUNNING if i == "transcribe" else StepState.PENDING)
+                           for i, label in EVALUATE_STEPS]
         response = SubmitAnswerResponse(question_id=question_id, received=True,
                                         next_question_id=next_id, status=status)
         record.answer_responses[question_id] = response

@@ -2,6 +2,7 @@ from fastapi import APIRouter, BackgroundTasks, File, Form, UploadFile
 
 from ..errors import ApiError
 from ..graph import run_prepare
+from ..nodes.prep.documents import DocumentError, collect_documents
 from ..schemas.api import CreateInterviewResponse, InterviewStatusResponse, PublicQuestion
 from ..schemas.state import SessionStatus
 from ..store import store
@@ -11,19 +12,10 @@ router = APIRouter(prefix="/api/interviews")
 DOCS = ("resume", "job_posting", "job_description", "cover_letter")
 
 
-async def _doc_text(name: str, text: str | None, file: UploadFile | None) -> str:
-    if file is not None and file.filename:
-        # PDF·DOCX 추출은 W-28(A) 담당. 지금은 텍스트 파일만 읽는다.
-        raw = await file.read()
-        if not file.filename.lower().endswith(".txt"):
-            raise ApiError("TEXT_EXTRACTION_FAILED", "파일에서 텍스트를 읽지 못했습니다", field=name)
-        try:
-            text = raw.decode("utf-8")
-        except UnicodeDecodeError:
-            raise ApiError("TEXT_EXTRACTION_FAILED", "파일에서 텍스트를 읽지 못했습니다", field=name)
-    if not text or not text.strip():
-        raise ApiError("MISSING_REQUIRED_DOC", "필수 서류가 비어 있습니다", field=name)
-    return text
+async def _read_file(file: UploadFile | None) -> tuple[str, bytes] | None:
+    if file is None or not file.filename:
+        return None
+    return file.filename, await file.read()
 
 
 @router.post("", status_code=201, response_model=CreateInterviewResponse)
@@ -39,19 +31,24 @@ async def create_interview(
     cover_letter_file: UploadFile | None = File(None),
     privacy_consent: bool = Form(False),
 ):
-    texts = {
-        "resume": await _doc_text("resume", resume_text, resume_file),
-        "job_posting": await _doc_text("job_posting", job_posting_text, job_posting_file),
-        "job_description": await _doc_text("job_description", job_description_text, job_description_file),
-        "cover_letter": await _doc_text("cover_letter", cover_letter_text, cover_letter_file),
+    # 서류 4종 텍스트 추출 (W-28, A). 검사 순서: 동의 → 필수 서류 → 텍스트 추출 (08 T-109, T-209, T-107)
+    files = {
+        "resume": await _read_file(resume_file),
+        "job_posting": await _read_file(job_posting_file),
+        "job_description": await _read_file(job_description_file),
+        "cover_letter": await _read_file(cover_letter_file),
     }
-    if not privacy_consent:
-        raise ApiError("CONSENT_REQUIRED", "개인정보 수집·이용에 동의해야 합니다")
+    texts = {"resume": resume_text, "job_posting": job_posting_text,
+             "job_description": job_description_text, "cover_letter": cover_letter_text}
+    try:
+        docs = collect_documents(files=files, texts=texts, privacy_consent=privacy_consent)
+    except DocumentError as e:
+        raise ApiError(e.code, e.message, field=e.field) from None
     record = store.create(
-        resume_text=texts["resume"],
-        job_posting_text=texts["job_posting"],
-        job_description_text=texts["job_description"],
-        cover_letter_text=texts["cover_letter"],
+        resume_text=docs.resume_text,
+        job_posting_text=docs.job_posting_text,
+        job_description_text=docs.job_description_text,
+        cover_letter_text=docs.cover_letter_text,
     )
     background.add_task(run_prepare, store, record.state.session_id)
     return CreateInterviewResponse(session_id=record.state.session_id, status=SessionStatus.PREPARING)

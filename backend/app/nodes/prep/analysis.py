@@ -38,6 +38,7 @@ ROLE = "analysis"
 MAX_REQUIREMENTS_PER_DOC = 20
 MAX_CLAIMS = 30
 MAX_CHECKPOINTS = 8
+MIN_REQUIREMENT_QUOTE_CHARS = 2  # "Python", "Git 협업" 같은 나열 항목 (주장 인용은 8자 규칙 그대로)
 PRIORITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 
 POSTING_DOCS = {"job_posting": "채용공고", "job_description": "직무기술서"}
@@ -74,13 +75,14 @@ class AnalysisReport:
     requirement_quotes: dict[str, str] = field(default_factory=dict)  # RQ- → 원문 구절 (계약 밖, 채점·연결 표시용)
     issues: dict[str, list[str]] = field(default_factory=dict)  # 단계별 안전장치 기록
     fallbacks: list[str] = field(default_factory=list)  # 대체값을 쓴 단계
+    skill_claim_ids: set[str] = field(default_factory=set)  # 기술 목록 줄 (연결 근거로만, 검증 포인트 제외)
 
     @property
     def details(self) -> dict[str, str]:
         a = self.analysis
         return {
             "read_posting": f"요구사항 {len(a.requirements)}개 확인",
-            "read_resume": f"경험 {self.experience_count}개, 확인할 주장 {len(a.claims)}개",
+            "read_resume": f"경험 {self.experience_count}개, 확인할 주장 {len(a.claims) - len(self.skill_claim_ids)}개",
         }
 
 
@@ -124,7 +126,7 @@ def sanitize_requirements(out: P.RequirementsOutput, text: str, issues: list[str
     items: list[tuple[str, str, str]] = []
     seen: set[tuple[int, int, str]] = set()
     for d in out.requirements:
-        m = find_quote(d.source_quote, text)
+        m = find_requirement_quote(d.source_quote, text)
         if m is None:
             issues.append(f"원문에 없는 인용이라 제외: {d.text!r} / {d.source_quote!r}")
             continue
@@ -139,6 +141,31 @@ def sanitize_requirements(out: P.RequirementsOutput, text: str, issues: list[str
             issues.append(f"항목이 많아 앞의 {MAX_REQUIREMENTS_PER_DOC}개만 사용")
             break
     return items
+
+
+_BULLET = re.compile(r"^(?:[-•·]|\d+\.)")
+
+
+def find_requirement_quote(quote: str | None, text: str) -> QuoteMatch | None:
+    """요구사항 인용 찾기. 8자 미만이어도 "필요 지식: Python, Git 협업" 같은 줄의 나열 항목이면 인정합니다.
+
+    짧은 인용은 섹션 제목을 요구사항으로 착각한 경우가 많아서 두 가지는 버립니다.
+    - 줄 전체가 그 인용뿐이고 글머리표가 없는 줄 (예: "담당 업무")
+    - 바로 뒤에 ":" 가 오는 줄머리 (예: "필요 지식:")
+    """
+    if m := find_quote(quote, text):
+        return m
+    m = find_quote(quote, text, min_chars=MIN_REQUIREMENT_QUOTE_CHARS)
+    if m is None:
+        return None
+    start = text.rfind("\n", 0, m.start) + 1
+    end = text.find("\n", m.end)
+    line = text[start:len(text) if end < 0 else end].strip()
+    if compact_len(line) == compact_len(m.text) and not _BULLET.match(line):
+        return None
+    if text[m.end:m.end + 3].lstrip(" )")[:1] in (":", "："):
+        return None
+    return m
 
 
 _TALENT_HINT = re.compile(r"인재상|태도|사람$|가치")
@@ -182,12 +209,14 @@ def read_resume(llm: JsonLLM, resume_text: str, cover_letter_text: str, report: 
         report.fallbacks.append("read_resume")
         issues.append("유효한 주장 없음 → 규칙 기반 대체값 사용")
         drafts = fallback_claims(docs)
+    skills = skill_list_claims(resume_text, drafts, issues)
 
     claims, experiences = [], {}
-    for source_doc, text, types, experience in drafts:
+    for source_doc, text, types, experience in drafts + skills:
         cid = f"CL-{len(claims) + 1:03d}"
         claims.append(Claim(claim_id=cid, source_doc=source_doc, text=text, types=types))
         experiences[cid] = experience
+    report.skill_claim_ids = {c.claim_id for c in claims[len(drafts):]}
     report.experience_count = len({normalize(e).lower() for e in experiences.values() if e and e != "기타"})
     return claims, experiences
 
@@ -222,6 +251,39 @@ def sanitize_claims(out: P.ClaimsOutput, docs: dict[str, str], issues: list[str]
     return items
 
 
+_SKILL_HEAD = re.compile(
+    r"^(?:기술|기술 ?스택|보유 ?기술|사용 ?기술|주요 ?기술|스킬|skills?|tech(?:nical)? ?stack)\s*(?:[:：]\s*(\S.*))?$", re.I)
+
+
+def skill_list_claims(resume_text: str, drafts: list, issues: list[str]) -> list[tuple[str, str, list[str], str]]:
+    """이력서의 기술 목록 줄("기술: Python, FastAPI …" 또는 "기술 스택" 아래 글머리표 줄)을 TECH 주장으로 덧붙입니다.
+
+    LLM 은 기술 나열을 주장으로 뽑지 않으므로(검증할 내용이 없음), 그대로 두면 "Python 활용 능력" 같은
+    요구사항이 "서류에 근거 없음"이 됩니다. 이 주장은 연결 근거로만 쓰고 검증 포인트에는 넣지 않습니다.
+    """
+    lines, in_section = [], False
+    for raw in resume_text.splitlines():
+        line = raw.strip()
+        if m := _SKILL_HEAD.match(line):
+            in_section = not m.group(1)
+            if m.group(1):
+                lines.append(line)  # 한 줄짜리: "기술: ..." 전체
+            continue
+        if in_section and line[:1] in ("-", "•", "·"):
+            lines.append(line.lstrip("-•· ").strip())
+        else:
+            in_section = False
+    taken = [normalize(t) for src, t, *_ in drafts if src == "resume"]
+    items = []
+    for line in lines:
+        n = normalize(line)
+        if len(n) < 8 or any(n in t or t in n for t in taken):
+            continue
+        items.append(("resume", line, ["TECH"], "기타"))
+        issues.append(f"기술 목록 줄을 연결용 주장으로 추가: {line!r}")
+    return items
+
+
 _METRIC = re.compile(r"\d+(?:[.,]\d+)?\s*(?:%|개|명|배|초|건|시간|일)")
 _ROLE = re.compile(r"주도|리드|팀장|총괄|담당했")
 _DECISION = re.compile(r"결정|선택")
@@ -246,7 +308,8 @@ def fallback_claims(docs: dict[str, str]) -> list[tuple[str, str, list[str], str
 def link(llm: JsonLLM, requirements: list[Requirement], claims: list[Claim], report: AnalysisReport) -> list[RequirementLink]:
     issues = report.issues.setdefault("link", [])
     try:
-        out, _ = llm.generate_json(ROLE, P.LINKS_SYSTEM, P.build_links_prompt(requirements, claims), P.LinksOutput)
+        out, _ = llm.generate_json(ROLE, P.LINKS_SYSTEM, P.build_links_prompt(requirements, claims, report.skill_claim_ids),
+                                   P.LinksOutput)
         return sanitize_links(out, requirements, claims, issues)
     except Exception as e:
         issues.append(f"LLM 실패: {e} → 규칙 기반 대체값 사용")
@@ -387,7 +450,8 @@ def run_analysis(
     step("link", "DONE", None)
 
     step("checkpoints", "RUNNING", None)
-    cps = checkpoints(llm, requirements, claims, experiences, report)
+    verifiable = [c for c in claims if c.claim_id not in report.skill_claim_ids]  # 기술 목록 줄은 검증할 내용이 없음
+    cps = checkpoints(llm, requirements, verifiable, experiences, report)
     step("checkpoints", "DONE", None)
 
     report.analysis = Analysis(requirements=requirements, claims=claims, checkpoints=cps, links=links)

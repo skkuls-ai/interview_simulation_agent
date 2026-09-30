@@ -1,5 +1,10 @@
 """녹음 수신 후 변환(STT)하고 음성 파일을 삭제한다 (F-008).
-STT 제공사는 미정이므로 SttProvider 프로토콜만 두고 stub을 쓴다."""
+
+STT_MODE: auto(기본) | gemini | stub
+- auto: GOOGLE_CLOUD_PROJECT 또는 GEMINI_API_KEY가 있으면 gemini, 없으면 stub
+- gemini: Gemini 오디오 입력으로 변환 (audio/gemini_stt.py)
+- stub: 고정 텍스트 (테스트, 키 없는 Docker)
+"""
 import os
 from typing import Protocol
 
@@ -17,9 +22,28 @@ class StubStt:
         return "테스트 답변입니다."
 
 
+def stt_mode() -> str:
+    mode = os.environ.get("STT_MODE", "auto").strip().lower()
+    if mode in ("gemini", "stub"):
+        return mode
+    from ..llm.settings import LLMSettings
+
+    settings = LLMSettings.from_env()  # 저장소 루트 .env도 읽는다
+    return "gemini" if (settings.project or settings.api_key) else "stub"
+
+
+_gemini: SttProvider | None = None
+
+
 def get_stt() -> SttProvider:
-    # TODO: 제공사 확정 후 실제 구현으로 교체
-    return StubStt()
+    global _gemini
+    if stt_mode() == "stub":
+        return StubStt()
+    if _gemini is None:
+        from .gemini_stt import GeminiStt
+
+        _gemini = GeminiStt()
+    return _gemini
 
 
 def transcribe_and_delete(store: Store, session_id: str, question_id: str,

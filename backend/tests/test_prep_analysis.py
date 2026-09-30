@@ -110,6 +110,23 @@ def test_requirements_fallback_when_llm_fails():
     assert kinds["LangChain·LangGraph 기반 멀티 에이전트 워크플로우 설계와 구현"] == "DUTY"
 
 
+def test_short_listed_requirement_items_are_kept_but_headings_are_not():
+    jd = "필요 지식: Python, 벡터 데이터베이스, Git 협업\n필요 역량: 문제 정의 능력, 우선순위 판단\n담당 업무\n- Docker\n"
+    out = P.RequirementsOutput.model_validate({"requirements": [
+        req("Python", "Python"),
+        req("Git 협업", "Git 협업"),
+        req("우선순위 판단", "우선순위 판단", "TALENT"),
+        req("Docker", "Docker"),                 # 글머리표 항목은 줄 전체여도 인정
+        req("담당 업무", "담당 업무", "DUTY"),     # 글머리표 없는 제목 줄 → 버림
+        req("필요 지식", "필요 지식"),             # 뒤에 ":" 가 오는 줄머리 → 버림
+        req("Kotlin", "Kotlin"),                 # 원문에 없음 → 버림
+    ]})
+    issues: list[str] = []
+    items = A.sanitize_requirements(out, jd, issues)
+    assert [q for _, _, q in items] == ["Python", "Git 협업", "우선순위 판단", "Docker"]
+    assert len(issues) == 3
+
+
 # ================================================================ 주장
 
 
@@ -117,14 +134,53 @@ def test_claims_are_verbatim_deduplicated_and_source_fixed():
     rep = report()
     claims, experiences = A.read_resume(FakeLLM({P.ClaimsOutput: CLAIMS_OUT}), RESUME, COVER, rep)
 
-    assert [c.claim_id for c in claims] == ["CL-001", "CL-002", "CL-003", "CL-004", "CL-005"]
-    assert [c.source_doc for c in claims] == ["cover_letter", "resume", "resume", "cover_letter", "cover_letter"]
+    llm_claims = claims[:5]  # 뒤의 2개는 "기술 스택" 글머리표 줄 (아래 기술 목록 테스트)
+    assert [c.claim_id for c in llm_claims] == ["CL-001", "CL-002", "CL-003", "CL-004", "CL-005"]
+    assert [c.source_doc for c in llm_claims] == ["cover_letter", "resume", "resume", "cover_letter", "cover_letter"]
     for c in claims:  # T-204: Claim.text 는 서류 원문에 그대로 있음
         assert c.text in (RESUME if c.source_doc == "resume" else COVER)
     issues = " ".join(rep.issues["read_resume"])
     assert "50%" in issues and "서류 구분 정정" in issues and "중복" in issues
     assert rep.experience_count == 2  # 레시피 RAG 챗봇, ProofLetter
     assert experiences["CL-005"] == "ProofLetter"
+
+
+def test_skill_list_lines_become_link_only_claims():
+    # 김하늘 이력서: "기술 스택" 제목 아래 글머리표 줄 2개
+    rep = report()
+    claims, _ = A.read_resume(FakeLLM({P.ClaimsOutput: CLAIMS_OUT}), RESUME, COVER, rep)
+    skills = [c for c in claims if c.claim_id in rep.skill_claim_ids]
+    assert [(c.claim_id, c.text, c.types) for c in skills] == [
+        ("CL-006", "Python, pandas, PostgreSQL, FastAPI, React", ["TECH"]),
+        ("CL-007", "Gemini API, LangChain, LangGraph, ChromaDB, NetworkX", ["TECH"]),
+    ]
+    assert rep.experience_count == 2                        # 경험 수에 넣지 않음
+    rep.analysis = Analysis(claims=claims)
+    assert rep.details["read_resume"].endswith("확인할 주장 5개")  # 확인할 주장에도 넣지 않음
+
+
+def test_inline_skill_line_is_kept_whole_and_not_duplicated():
+    resume = "기술: Python, FastAPI, LangGraph 학습 중, Git\n- 검색 정확도를 20% 개선했습니다."
+    assert [t for _, t, *_ in A.skill_list_claims(resume, [], [])] == ["기술: Python, FastAPI, LangGraph 학습 중, Git"]
+    taken = [("resume", "기술: Python, FastAPI, LangGraph 학습 중, Git", ["TECH"], "기타")]
+    assert A.skill_list_claims(resume, taken, []) == []     # LLM 이 이미 뽑았으면 다시 넣지 않음
+
+
+def test_skill_claims_are_marked_for_link_and_excluded_from_checkpoints():
+    llm = FakeLLM({
+        (P.RequirementsOutput, "job_posting"): POSTING_OUT,
+        (P.RequirementsOutput, "job_description"): DESCRIPTION_OUT,
+        P.ClaimsOutput: CLAIMS_OUT,
+        P.LinksOutput: {"links": [{"requirement_id": "RQ-001", "claim_ids": ["CL-006"]}]},
+        P.CheckpointsOutput: {"checkpoints": [cp(["CL-006"], "기술 목록만 참조", "high"), cp(["CL-001"], "측정 기준", "high")]},
+    })
+    rep = A.run_analysis(llm, RESUME, POSTING, DESCRIPTION, COVER)
+    link_prompt = next(c["prompt"] for c in llm.calls if c["schema"] is P.LinksOutput)
+    cp_prompt = next(c["prompt"] for c in llm.calls if c["schema"] is P.CheckpointsOutput)
+    assert "(TECH) [기술 목록] Python, pandas" in link_prompt
+    assert "CL-006" not in cp_prompt
+    assert rep.analysis.links[0].claim_ids == ["CL-006"]                  # 연결 근거로는 인정
+    assert [c.title for c in rep.analysis.checkpoints] == ["측정 기준"]    # 검증 포인트에서는 제외
 
 
 def test_claims_fallback_when_llm_fails():
