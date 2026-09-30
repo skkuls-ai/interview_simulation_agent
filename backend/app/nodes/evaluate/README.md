@@ -73,10 +73,10 @@ docs/05 10절은 노드 순서를 `graph/`에서 정하게 되어 있지만, 평
 
 ```bash
 cd backend
-python -m pytest -q tests                    # E 50개 포함, API 호출 없음
+python -m pytest -q tests                    # API 호출 없음
 python scripts/run_demo_eval.py --repeat 3   # 실제 Gemini (컨테이너 밖, gcloud 로그인 필요)
 python scripts/build_report_mock.py          # shared/mock/report.json, report_edge.json 다시 생성
 ```
 
 - 가짜 LLM이 mock 문구를 돌려주면 러너 결과가 `shared/mock/report.json`과 완전히 같다 (테스트로 확인). 화면 7을 mock으로 만들면 실제 결과에도 맞는다.
-- 9/30 실측(데모 시나리오 7회): 판정 7/7 기대와 같음. 보통 11~15초, Gemini 쪽 지연이 걸린 호출이 있으면 40~50초 (제한 시간 조정 예정).
+- 9/30 실측(이전 김하늘 시나리오 7회): 판정 7/7 기대와 같음. 데모 샘플이 지원자A로 정해져 입력을 바꿨으니 다시 잴 것. 보통 11~15초, Gemini 쪽 지연이 걸린 호출이 있으면 40~50초 (제한 시간 조정 예정).

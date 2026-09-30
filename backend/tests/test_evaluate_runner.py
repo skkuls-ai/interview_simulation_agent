@@ -1,6 +1,6 @@
 """평가 러너 테스트. 가짜 LLM 으로 흐름과 코드 판정 규칙을 확인한다 (API 호출 없음).
 
-기준 입력은 mock/build_report_mock.py 의 데모 시나리오를 그대로 쓴다. 가짜 LLM 이 mock 문구를 돌려주면
+기준 입력은 scripts/build_report_mock.py 의 발표 데모 시나리오(지원자A)를 그대로 쓴다. 가짜 LLM 이 mock 문구를 돌려주면
 러너 결과가 report.json 과 같아야 한다 (mock 과 실제 코드가 같은 모양이라는 확인).
 """
 
@@ -22,8 +22,8 @@ spec = importlib.util.spec_from_file_location("mockbuild", Path(__file__).parent
 M = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(M)
 
-CHECKPOINT_CLAIMS = {"CP-001": ["CL-001", "CL-002"], "CP-002": ["CL-003", "CL-004"], "CP-004": ["CL-006", "CL-007"]}
-QUESTION_CPS = {"Q-1": ["CP-001"], "Q-3": ["CP-004"], "Q-4": ["CP-001", "CP-002"]}
+CHECKPOINT_CLAIMS = {c["checkpoint_id"]: c["claim_ids"] for c in M.CHECKPOINTS}
+QUESTION_CPS = M.QUESTION_CPS
 ORDER = {"Q-1": 1, "Q-2": 2, "Q-3": 3, "Q-4": 4, "Q-5": 5}
 
 
@@ -31,9 +31,7 @@ def analysis() -> Analysis:
     return Analysis(
         requirements=[Requirement(**r) for r in M.REQUIREMENTS],
         claims=[Claim(**c) for c in M.CLAIMS],
-        checkpoints=[Checkpoint(checkpoint_id=c["checkpoint_id"], title=c["title"], what_to_verify="",
-                                claim_ids=CHECKPOINT_CLAIMS[c["checkpoint_id"]])
-                     for c in M.CHECKPOINTS],
+        checkpoints=[Checkpoint(**c) for c in M.CHECKPOINTS],
     )
 
 
@@ -197,9 +195,10 @@ def test_verdict_without_evidence_becomes_withheld_after_retry():
 
 
 def test_unknown_refs_are_dropped():
-    bad = with_(mock_outputs()["job_fit"], refs=["RQ-014", "RQ-999"])
+    known = M.JOB_FIT["refs"][0]
+    bad = with_(mock_outputs()["job_fit"], refs=[known, "RQ-999"])
     report, ev = run(FakeLLM({"job_fit": [bad, bad]}))
-    assert report["job_fit"]["refs"] == ["RQ-014"]
+    assert report["job_fit"]["refs"] == [known]
     assert any("RQ-999" in i for i in ev.trace.issues["job_fit"])
 
 
@@ -219,21 +218,19 @@ def test_forbidden_advice_is_dropped():
 
 
 def edge_qa():
-    qa = [dict(q) for q in M.QA]
-    qa[2] = {**qa[2], "answer_text": None}  # Q-3 인식 실패
-    return qa
+    return [{**q, "answer_text": None} if q["question_id"] == M.EDGE_QID else dict(q) for q in M.QA]
 
 
 def test_unrecognized_answer_is_not_sent_to_llm_and_gets_template():
     llm = FakeLLM({"per_question": [P.PerQuestionOut(items=[i for i in mock_outputs()["per_question"].items
-                                                            if i.question_id != "Q-3"])]})
+                                                            if i.question_id != M.EDGE_QID])]})
     report, _ = run(llm, qa=edge_qa())
-    q3_text = M.QA[2]["answer_text"][:20]
-    assert all(q3_text not in p for ps in llm.prompts.values() for p in ps)
-    q3 = next(p for p in report["per_question"] if p["question_id"] == "Q-3")
-    assert q3["strengths"] == [] and "기록되지 않았습니다" in q3["next_action"]
-    assert q3["linked_checkpoint_ids"] == ["CP-004"]  # 연결 정보는 유지
-    assert next(q for q in report["questions"] if q["question_id"] == "Q-3")["answer_text"] is None
+    lost = next(q for q in M.QA if q["question_id"] == M.EDGE_QID)["answer_text"][:20]
+    assert all(lost not in p for ps in llm.prompts.values() for p in ps)
+    item = next(p for p in report["per_question"] if p["question_id"] == M.EDGE_QID)
+    assert item["strengths"] == [] and "기록되지 않았습니다" in item["next_action"]
+    assert item["linked_checkpoint_ids"] == M.QUESTION_CPS[M.EDGE_QID] != []  # 연결 정보는 유지
+    assert next(q for q in report["questions"] if q["question_id"] == M.EDGE_QID)["answer_text"] is None
 
 
 def test_fewer_than_two_answers_withholds_without_llm_call():
@@ -309,7 +306,7 @@ def test_llm_failure_twice_uses_fallback():
     report, ev = run(llm)
     assert report["job_fit"]["verdict"] == "WITHHELD" and "job_fit" in ev.trace.fallback
     assert all(p["next_action"] and p["strengths"] == [] for p in report["per_question"])
-    assert report["consistency"]["verdict"] == "NEEDS_WORK"  # 다른 영역은 영향 없음
+    assert report["consistency"]["verdict"] == M.CONSISTENCY["verdict"]  # 다른 영역은 영향 없음
 
 
 def test_per_question_missing_item_retries_then_fills_template():

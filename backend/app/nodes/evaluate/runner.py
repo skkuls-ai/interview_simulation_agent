@@ -237,7 +237,7 @@ class Evaluator:
                            "answer_text": ctx.spoken.get(q.question_id)} for q in ctx.questions],
             "requirements": [{"requirement_id": r.requirement_id, "text": r.text, "kind": P._v(r.kind)}
                              for r in sorted(ctx.analysis.requirements, key=lambda r: r.requirement_id)
-                             if r.requirement_id in req_ids],  # (제안) 계약서 확인 필요 4번
+                             if r.requirement_id in req_ids],  # docs/04 ReportRequirement (PR #10)
             "claims": [{"claim_id": c.claim_id, "text": c.text}
                        for c in sorted(ctx.analysis.claims, key=lambda c: c.claim_id) if c.claim_id in claim_ids],
             "checkpoints": [{"checkpoint_id": c.checkpoint_id, "title": c.title}

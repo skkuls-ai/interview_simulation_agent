@@ -1,4 +1,4 @@
-"""데모 시나리오로 실제 Gemini 피드백을 만들어 봅니다. J님 PC 에서 실행 (컨테이너 밖).
+"""발표 데모 시나리오(지원자A)로 실제 Gemini 피드백을 만들어 봅니다. J님 PC 에서 실행 (컨테이너 밖).
 
     cd backend
     python scripts/run_demo_eval.py              # 실제 Gemini 1회 (backend 폴더에서)
@@ -26,11 +26,11 @@ ROOT = Path(__file__).parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tests"))
 
-from test_evaluate_runner import FakeLLM, make_input  # noqa: E402  데모 입력은 테스트와 같은 시나리오
+from test_evaluate_runner import M, FakeLLM, make_input  # noqa: E402  데모 입력은 테스트와 같은 시나리오 (지원자A)
 
 from app.nodes.evaluate.runner import Evaluator  # noqa: E402
 
-EXPECTED = {"job_fit": "NEEDS_WORK", "consistency": "NEEDS_WORK"}  # 데모 시나리오의 기대 판정 (mock 기준)
+EXPECTED = {"job_fit": M.JOB_FIT["verdict"], "consistency": M.CONSISTENCY["verdict"]}  # 기대 판정 (mock 기준)
 
 
 def print_run(i: int, report: dict, ev: Evaluator, elapsed: float, path: Path) -> None:
