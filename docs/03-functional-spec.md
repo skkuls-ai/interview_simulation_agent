@@ -110,7 +110,7 @@ stateDiagram-v2
 | 항목 | 내용 |
 | --- | --- |
 | 입력 | 답변 녹음 파일 |
-| 처리 | 답변 종료 후 파일 단위로 변환(Live 스트리밍·실시간 자막 없음). 변환 후 음성 파일 삭제. `words_per_min`, `filler_count`는 코드가 transcript에서 계산 (Should) |
+| 처리 | 답변 종료 후 파일 단위로 변환(Live 스트리밍·실시간 자막 없음). 변환 후 음성 파일 삭제. `words_per_min`, `filler_count`는 코드가 transcript에서 계산 (Should). 변환은 Gemini 오디오 입력(`STT_MODE`, `STT_MODEL`), 군말은 지우지 않고 받아 적음 |
 | 출력 | `Answer.transcript`, `transcript_status`(`DONE`/`NO_SPEECH`/`FAILED`) |
 | 규칙 | 삭제는 성공·실패 무관하게 수행하는 것이 원칙이나 실패 시 보관 정책은 미정. 평가 시작 시점은 마지막 답변과 STT 변환이 모두 끝난 뒤 |
 | 예외 | 무음 → `NO_SPEECH`, 변환 실패 → `FAILED`. 면접은 그대로 진행하고 해당 질문은 「답변 인식 안 됨」 → 판정 제외 |
