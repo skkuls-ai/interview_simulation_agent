@@ -74,7 +74,9 @@ _QUOTE_RULE = """\
 [원문 복사 규칙]
 "그대로 복사"하라고 한 칸은 서류의 글자를 한 글자도 바꾸지 않고 복사합니다.
 요약하거나, 맞춤법을 고치거나, 숫자를 바꾸거나, 여러 문장을 이어 붙이지 않습니다. 글머리표(-, •)와 번호는 빼도 됩니다.
-시스템이 복사한 구절을 원문과 대조하고, 원문에 없으면 그 항목을 버립니다. 8자 미만의 짧은 구절도 버립니다."""
+시스템이 복사한 구절을 원문과 대조하고, 원문에 없으면 그 항목을 버립니다."""
+
+_SHORT_QUOTE_RULE = "8자 미만의 짧은 구절은 버립니다."
 
 _NEUTRAL_RULE = """\
 [판단 금지]
@@ -97,6 +99,8 @@ REQUIREMENTS_SYSTEM = f"""\
   · TALENT: 인재상, 태도, 가치 (인재상, 직무 수행 태도)
 - text: 요구사항을 40자 이내로 요약합니다.
 - source_quote: 그 요구사항이 적힌 문장을 그대로 복사합니다.
+  "필요 지식: Python, 벡터 데이터베이스, Git 협업"처럼 짧은 항목이 나열된 줄은 항목마다 요구사항을 만들고,
+  source_quote 에는 그 항목만("Python", "Git 협업") 복사해도 됩니다. 앞의 "필요 지식:" 같은 제목은 넣지 않습니다.
 
 {_QUOTE_RULE}"""
 
@@ -130,6 +134,7 @@ CLAIMS_SYSTEM = f"""\
   짧은 구절은 같은 서류에 여러 번 나와 어느 경험인지 알 수 없고, 8자 미만이면 시스템이 버리기 때문입니다.
 
 {_QUOTE_RULE}
+{_SHORT_QUOTE_RULE}
 
 {_NEUTRAL_RULE}"""
 
@@ -141,6 +146,12 @@ LINKS_SYSTEM = f"""\
 - 주장이 요구사항과 직접 관련될 때만 연결합니다. 억지로 연결하지 않습니다.
 - 뒷받침하는 주장이 없으면 claim_ids 를 빈 목록으로 둡니다. 빈 목록은 "서류에 근거 없음"이라는 뜻이며, 이것도 중요한 결과입니다.
 - 주어진 요구사항 ID 와 주장 ID 만 씁니다. 새 ID 를 만들지 않습니다.
+
+[기술 목록 주장]
+[기술 목록]이 붙은 주장은 이력서에 기술 이름만 나열한 줄입니다. 무엇을 했는지는 적혀 있지 않습니다.
+- 요구사항이 그 기술 자체를 다룰 때만 근거로 씁니다. 예: "Python 활용 능력" ← "Python, FastAPI, Git"
+- "사용 경험", "설계", "구현", "운영"처럼 한 일을 묻는 요구사항은 기술 목록만으로 연결하지 않습니다.
+- "학습 중", "공부 중"처럼 적힌 기술은 어떤 요구사항의 근거로도 쓰지 않습니다.
 
 {_NEUTRAL_RULE}"""
 
@@ -203,22 +214,22 @@ def _requirement_lines(requirements) -> str:
     return "\n".join(f"- {r.requirement_id} [{r.kind}, {r.source_doc}] {r.text}" for r in requirements)
 
 
-def _claim_lines(claims, experiences: dict[str, str] | None = None) -> str:
+def _claim_lines(claims, experiences: dict[str, str] | None = None, skill_ids=()) -> str:
     exp = experiences or {}
     return "\n".join(
         f"- {c.claim_id} [{c.source_doc}{', ' + exp[c.claim_id] if c.claim_id in exp else ''}] "
-        f"({'/'.join(c.types)}) {c.text}"
+        f"({'/'.join(c.types)}){' [기술 목록]' if c.claim_id in skill_ids else ''} {c.text}"
         for c in claims
     )
 
 
-def build_links_prompt(requirements, claims) -> str:
+def build_links_prompt(requirements, claims, skill_ids=()) -> str:
     return f"""\
 [요구사항]
 {_requirement_lines(requirements)}
 
 [지원자 주장]
-{_claim_lines(claims)}"""
+{_claim_lines(claims, skill_ids=skill_ids)}"""
 
 
 def build_checkpoints_prompt(requirements, claims, experiences: dict[str, str]) -> str:
