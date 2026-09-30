@@ -87,6 +87,7 @@ Docs 폴더 구조 기준. 소유자가 아닌 사람은 읽기만 하고, 고�
 | `frontend/src/components/` | progress B, interview D, report E, upload A |
 | `frontend/src/api/` | D |
 | `shared/mock/` | 파일별 작성자 (sample_inputs A, session_preparing A, session_ready B, answer_accepted C, session_evaluating C, report E), 변경은 C 리뷰 |
+| `Dockerfile`, `docker-compose.yml`, `.dockerignore` | C |
 | `docs/` | 팀 공동, 수정 시 PR |
 
 `nodes/prep/`처럼 두 명이 함께 쓰는 폴더는 파일 단위로 나눠 같은 파일을 동시에 고치지 않는다. (제안)
@@ -99,6 +100,8 @@ Docs 폴더 구조 기준. 소유자가 아닌 사람은 읽기만 하고, 고�
 - 키·토큰을 채팅, 코드, 로그, 스크린샷에 붙이지 않는다. 실수로 커밋했다면 키를 폐기·재발급한다. (제안)
 - LLM·STT 제공사와 키 이름은 킥오프 결정 후 `.env.example`에 추가한다. (미정)
 - 프런트 환경변수는 `VITE_` 접두사만 쓰고, 여기에 비밀 키를 넣지 않는다. (React+Vite 가정, 미정)
+- Docker: `.env`와 키 파일을 이미지에 넣지 않는다. `docker-compose.yml`의 `env_file`이나 런타임 환경변수로 주입한다. (제안)
+- `.dockerignore`에 `.env*`, 키 파일, `.git`, `node_modules`를 넣는다. 서비스 계정 키 같은 파일은 `.gitignore`에도 추가한다. (제안)
 
 `.env.example` 예시 (키 이름은 예시이며 제공사 확정 후 조정):
 
@@ -112,6 +115,7 @@ VITE_USE_MOCK=true
 
 - 실제 API가 준비되기 전에는 `shared/mock/`의 JSON으로 개발한다. 프런트는 `VITE_USE_MOCK=true` 하나로 전환한다. (확정)
 - 전환 코드는 `frontend/src/api/client.ts`(D)에만 둔다. 화면 코드에서 mock 여부를 직접 분기하지 않는다. (제안)
+- Docker에서는 `VITE_USE_MOCK`이 빌드 시점에 고정된다. 값을 바꾸면 `docker compose build frontend`로 프런트 이미지를 다시 빌드해야 한다. 화면을 빠르게 고치는 동안은 로컬 Vite 개발 서버로 mock을 쓰고, 통합 확인은 Docker로 한다. (제안)
 - mock은 실제 API와 같은 모양이어야 하고, 고정 데모 시나리오 하나(「RAG 검색 정확도를 20% 개선」이 Q-1·Q-4 답변과 연결)로 맞춘다.
 - 백엔드 단위 테스트도 같은 mock을 쓴다.
 
