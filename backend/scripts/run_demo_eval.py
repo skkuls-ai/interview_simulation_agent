@@ -5,6 +5,7 @@
     python scripts/run_demo_eval.py --repeat 3   # 3회 실행 후 판정 흔들림과 시간 요약
     python scripts/run_demo_eval.py --fake       # LLM 없이 흐름만 확인 (mock 문구를 그대로 돌려줌)
     python scripts/run_demo_eval.py --mismatch --repeat 3   # 서류와 어긋난 답변을 잡아내는지 확인
+    python scripts/run_demo_eval.py --real-analysis --repeat 3   # A 의 실제 서류 분석 결과로 E 실행 (앱과 같은 입력)
 
 필요: gcloud auth application-default login, 환경변수 GOOGLE_CLOUD_PROJECT
 모델: INTERVIEW_MODEL_EVALUATOR (판정, MEDIUM), INTERVIEW_MODEL_COACH (조언과 질문별, LOW),
@@ -16,6 +17,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import statistics
 import sys
@@ -67,6 +69,31 @@ def print_run(i: int, report: dict, ev: Evaluator, elapsed: float, path: Path) -
     print(f"전체 결과: {path}")
 
 
+def real_analysis_input(client, qa, save_to: Path):
+    """앱의 준비 그래프와 같은 입력: A 의 실제 분석 + 임시 질문 5개(checkpoint_ids, criteria 없음)."""
+    from app.nodes.prep.analysis import run_analysis
+
+    docs = M.INPUTS
+    print("\n[실제 서류 분석] sample_inputs.json (지원자A) 로 run_analysis 실행 중 ...")
+    t0 = time.perf_counter()
+    rep = run_analysis(client, docs["resume_text"], docs["job_posting_text"], docs["job_description_text"],
+                       docs["cover_letter_text"])
+    a = rep.analysis
+    print(f"  {time.perf_counter() - t0:.1f}초, 요구사항 {len(a.requirements)}개, 서류 주장 {len(a.claims)}개, "
+          f"확인 포인트 {len(a.checkpoints)}개, 연결 {len(a.links)}개, 대체값 {rep.fallbacks or '없음'}")
+    for r in a.requirements:
+        print(f"  {r.requirement_id} [{r.kind.value}] {r.text}")
+    for c in a.checkpoints:
+        print(f"  {c.checkpoint_id} {c.title}  <- {c.claim_ids}")
+    save_to.write_text(a.model_dump_json(indent=2), encoding="utf-8")
+    print(f"  분석 결과: {save_to}")
+    inp = make_input(qa)
+    for q in inp.questions:  # 앱은 지금 session_ready.json 임시 질문을 씀 (B 질문 생성 합류 전)
+        q.checkpoint_ids, q.criteria = [], []
+    inp.analysis = a
+    return inp
+
+
 def mismatch_qa() -> list[dict]:
     qa = [dict(q) for q in M.QA]
     q4 = next(q for q in qa if q["question_id"] == "Q-4")
@@ -83,6 +110,9 @@ def main() -> None:
     ap.add_argument("--repeat", type=int, default=1, help="반복 실행 횟수 (판정 흔들림 확인)")
     ap.add_argument("--mismatch", action="store_true",
                     help="Q-4 답변의 평가용 질문 수를 서류(50개)와 다르게 바꿔 일관성이 NEEDS_WORK 로 잡히는지 확인")
+    ap.add_argument("--real-analysis", action="store_true",
+                    help="mock 분석 대신 A 의 run_analysis 를 sample_inputs.json 으로 실제 실행하고, 질문은 앱처럼 "
+                         "session_ready.json 임시 질문(확인 포인트 연결 없음)을 써서 E 를 돌림")
     args = ap.parse_args()
 
     qa = None
@@ -107,11 +137,17 @@ def main() -> None:
     out_dir = ROOT / "var" / "eval"
     out_dir.mkdir(parents=True, exist_ok=True)
     stamp = f"{datetime.now():%Y%m%d_%H%M%S}"
+
+    base_input = make_input(qa)
+    if args.real_analysis:
+        if args.fake:
+            raise SystemExit("--real-analysis 는 실제 Gemini 가 필요합니다 (--fake 와 함께 쓸 수 없음)")
+        base_input = real_analysis_input(client, qa, out_dir / f"analysis_{stamp}.json")
     runs = []
     for i in range(1, args.repeat + 1):
         ev = Evaluator(make_llm(), use_reviewer=not args.no_review)
         t0 = time.perf_counter()
-        report = ev.run(make_input(qa))
+        report = ev.run(copy.deepcopy(base_input))
         elapsed = time.perf_counter() - t0
         path = out_dir / f"report_{stamp}_{i}.json"
         path.write_text(json.dumps({"report": report, "trace": ev.trace.__dict__}, ensure_ascii=False, indent=2),
@@ -126,6 +162,9 @@ def main() -> None:
         for area in ("job_fit", "consistency"):
             v = [r[area]["verdict"] for r, _, _ in runs]
             print(f"{area}: {v}  기대와 같음 {sum(x == EXPECTED[area] for x in v)}/{len(v)}")
+        if args.real_analysis:
+            linked = [sum(bool(p["linked_claim_ids"]) for p in r["per_question"]) for r, _, _ in runs]
+            print(f"연결 정보(서류 주장)가 붙은 질문 수 (5개 중): {linked}")
         by_target: dict[str, list[float]] = {}
         for _, t, _ in runs:
             for c in t.calls:
