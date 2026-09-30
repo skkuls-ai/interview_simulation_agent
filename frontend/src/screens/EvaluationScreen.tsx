@@ -1,21 +1,29 @@
 import { Check, LoaderCircle, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
 import { AppShell } from "../components/AppShell";
 
-interface EvaluationScreenProps { onComplete: () => void; }
+interface EvaluationScreenProps { onComplete: () => void }
+
+const steps = ["답변 변환 중", "태도 분석 중", "직무 적합성 분석 중", "답변 일관성 분석 중", "피드백 정리 중"];
 
 export function EvaluationScreen({ onComplete }: EvaluationScreenProps) {
+  const [active, setActive] = useState(0);
+  useEffect(() => {
+    if (active >= steps.length) return;
+    const timer = window.setTimeout(() => setActive((value) => value + 1), 700);
+    return () => window.clearTimeout(timer);
+  }, [active]);
+
+  const completed = active >= steps.length;
   return (
-    <AppShell title="면접 결과를 정리하고 있어요" description="문항별 평가를 모아 강점과 개선 방향을 찾고 있습니다.">
+    <AppShell title={completed ? "피드백 준비가 끝났어요" : "면접 결과를 정리하고 있어요"} description="답변의 근거를 확인하고 직무 적합성과 일관성을 함께 살펴봅니다.">
       <section className="process-card panel evaluation-card">
-        <div className="evaluation-symbol"><LoaderCircle size={34} /><Sparkles size={18} /></div>
-        <div className="evaluation-meter"><span /></div>
+        <div className="evaluation-symbol">{completed ? <Check size={34} /> : <LoaderCircle size={34} />}<Sparkles size={18} /></div>
+        <div className="evaluation-meter"><span style={{ width: `${Math.min(100, active / steps.length * 100)}%` }} /></div>
         <div className="evaluation-list">
-          <span><Check size={16} /> 답변 내용과 근거 확인</span>
-          <span><Check size={16} /> 직무 역량 기준 종합</span>
-          <span className="is-processing"><LoaderCircle size={16} /> 전달 방식 피드백 생성</span>
+          {steps.map((label, index) => <span className={index === active ? "is-processing" : ""} key={label}>{index < active ? <Check size={16} /> : <LoaderCircle size={16} />} {label}</span>)}
         </div>
-        <p className="process-note">실제 연동 시 백그라운드 평가 완료 이벤트를 기다립니다.</p>
-        <button className="button button-secondary" type="button" onClick={onComplete}>결과 화면 확인</button>
+        <button className="button button-primary" type="button" disabled={!completed} onClick={onComplete}>피드백 보기</button>
       </section>
     </AppShell>
   );

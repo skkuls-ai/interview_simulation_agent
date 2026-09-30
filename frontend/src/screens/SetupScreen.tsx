@@ -1,82 +1,87 @@
 import { BriefcaseBusiness, Check, FileText, ScrollText, UploadCloud } from "lucide-react";
 import { useState, type ChangeEvent, type ReactNode } from "react";
 import { AppShell } from "../components/AppShell";
-import type { SessionSetup } from "../types/interview";
+import type { DocumentInput, SessionSetup } from "../types/interview";
 
-interface SetupScreenProps {
-  onSubmit: (setup: SessionSetup) => void;
-}
+interface SetupScreenProps { onSubmit: (setup: SessionSetup) => void }
+type InputMode = "file" | "text";
 
-interface FileFieldProps {
+interface DocumentFieldProps {
   title: string;
   description: string;
   icon: ReactNode;
-  value: File | null;
-  onChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  value: DocumentInput;
+  onChange: (value: DocumentInput) => void;
 }
 
-const heroKeywords = [
-  "JD 분석", "경험 연결", "직무 맞춤 질문", "실전형 꼬리질문",
-  "답변 분석", "역량별 피드백", "모의 면접", "종합 리포트",
-];
+const emptyDocument = (): DocumentInput => ({ file: null, text: "" });
+const isFilled = (value: DocumentInput) => Boolean(value.file || value.text.trim());
 
-function FileField({ title, description, icon, value, onChange }: FileFieldProps) {
+function DocumentField({ title, description, icon, value, onChange }: DocumentFieldProps) {
+  const [mode, setMode] = useState<InputMode>("file");
+  const pickFile = (event: ChangeEvent<HTMLInputElement>) => onChange({ file: event.target.files?.[0] ?? null, text: "" });
+
   return (
-    <label className={`upload-card${value ? " is-selected" : ""}`}>
-      <span className="upload-icon">{value ? <Check size={22} /> : icon}</span>
-      <span className="upload-copy">
-        <strong>{title} <small>선택</small></strong>
-        <span>{value?.name ?? description}</span>
-      </span>
-      <span className="upload-action"><UploadCloud size={18} /> {value ? "변경" : "파일 선택"}</span>
-      <input type="file" accept=".pdf,.docx,.txt,.png,.jpg,.jpeg" onChange={onChange} />
-    </label>
+    <section className={`document-card${isFilled(value) ? " is-selected" : ""}`}>
+      <header className="document-card-header">
+        <span className="upload-icon">{isFilled(value) ? <Check size={20} /> : icon}</span>
+        <div><strong>{title}</strong><p>{description}</p></div>
+        <div className="input-tabs" role="tablist" aria-label={`${title} 입력 방식`}>
+          <button className={mode === "file" ? "is-active" : ""} type="button" onClick={() => setMode("file")}>파일</button>
+          <button className={mode === "text" ? "is-active" : ""} type="button" onClick={() => setMode("text")}>직접 입력</button>
+        </div>
+      </header>
+      {mode === "file" ? (
+        <label className="document-file">
+          <span>{value.file?.name ?? "PDF, DOCX, TXT · 최대 10MB"}</span>
+          <strong><UploadCloud size={16} /> {value.file ? "변경" : "파일 선택"}</strong>
+          <input type="file" accept=".pdf,.docx,.txt" onChange={pickFile} />
+        </label>
+      ) : (
+        <textarea
+          className="document-textarea"
+          rows={5}
+          value={value.text}
+          onChange={(event) => onChange({ file: null, text: event.target.value })}
+          placeholder={`${title} 내용을 붙여 넣어 주세요.`}
+        />
+      )}
+    </section>
   );
 }
 
 export function SetupScreen({ onSubmit }: SetupScreenProps) {
-  const [consented, setConsented] = useState(false);
-  const [jdFile, setJdFile] = useState<File | null>(null);
-  const [resumeFile, setResumeFile] = useState<File | null>(null);
-  const [coverLetterFile, setCoverLetterFile] = useState<File | null>(null);
-
-  const file = (setter: (value: File | null) => void) =>
-    (event: ChangeEvent<HTMLInputElement>) => setter(event.target.files?.[0] ?? null);
+  const [privacyConsent, setPrivacyConsent] = useState(false);
+  const [resume, setResume] = useState(emptyDocument);
+  const [jobPosting, setJobPosting] = useState(emptyDocument);
+  const [jobDescription, setJobDescription] = useState(emptyDocument);
+  const [coverLetter, setCoverLetter] = useState(emptyDocument);
+  const ready = privacyConsent && [resume, jobPosting, jobDescription, coverLetter].every(isFilled);
 
   return (
-    <AppShell
-      title="나에게 맞춘 면접을 준비해볼까요?"
-      description="자료를 등록하면 경험과 지원 직무를 반영해 질문을 구성합니다. 자료 없이도 시작할 수 있어요."
-    >
-      <div className="hero-keywords" aria-hidden="true">
-        {heroKeywords.map((keyword, index) => <span key={keyword} className={`hero-keyword hero-keyword-${index + 1}`}>{keyword}</span>)}
-      </div>
-      <div className="setup-layout" id="setup-materials">
+    <AppShell title="면접에 사용할 서류를 등록해 주세요" description="네 가지 자료를 바탕으로 지원 직무와 경험을 연결하고, 맞춤 질문 다섯 개를 준비합니다.">
+      <div className="upload-layout">
         <section className="panel setup-panel">
-          <div className="section-heading">
-            <div><span className="eyebrow">선택 사항</span><h2>개인화 자료</h2></div>
-            <span className="section-count">최대 3개</span>
-          </div>
-          <div className="upload-list">
-            <FileField title="채용공고" description="지원 직무의 JD를 등록해 주세요" icon={<BriefcaseBusiness size={22} />} value={jdFile} onChange={file(setJdFile)} />
-            <FileField title="이력서" description="PDF, DOCX, TXT 또는 이미지" icon={<FileText size={22} />} value={resumeFile} onChange={file(setResumeFile)} />
-            <FileField title="자기소개서" description="작성한 자기소개서가 있다면 등록해 주세요" icon={<ScrollText size={22} />} value={coverLetterFile} onChange={file(setCoverLetterFile)} />
+          <div className="section-heading"><div><span className="eyebrow">Required documents</span><h2>지원 자료</h2></div><span className="section-count">필수 4개</span></div>
+          <div className="document-list">
+            <DocumentField title="이력서" description="경력과 프로젝트 경험을 확인합니다." icon={<FileText size={20} />} value={resume} onChange={setResume} />
+            <DocumentField title="채용공고" description="회사와 인재상, 모집 내용을 확인합니다." icon={<BriefcaseBusiness size={20} />} value={jobPosting} onChange={setJobPosting} />
+            <DocumentField title="직무기술서" description="담당 업무와 필요 역량을 확인합니다." icon={<BriefcaseBusiness size={20} />} value={jobDescription} onChange={setJobDescription} />
+            <DocumentField title="자기소개서" description="서류의 주장과 면접 답변을 비교합니다." icon={<ScrollText size={20} />} value={coverLetter} onChange={setCoverLetter} />
           </div>
           <label className="consent-row">
-            <input type="checkbox" checked={consented} onChange={(event) => setConsented(event.target.checked)} />
-            <span><strong>면접 진행 및 데이터 처리 안내에 동의합니다.</strong><small>카메라 영상 원본은 저장하지 않으며 분석 지표만 사용합니다.</small></span>
+            <input type="checkbox" checked={privacyConsent} onChange={(event) => setPrivacyConsent(event.target.checked)} />
+            <span><strong>면접 진행 및 데이터 처리 안내에 동의합니다.</strong><small>녹음은 STT 변환 후 삭제되며, 카메라 영상은 서버로 전송하거나 저장하지 않습니다.</small></span>
           </label>
-          <button className="button button-primary button-wide" type="button" disabled={!consented} onClick={() => onSubmit({ consented, jdFile, resumeFile, coverLetterFile })}>
-            면접 준비하기
-          </button>
+          <button className="button button-primary button-wide" type="button" disabled={!ready} onClick={() => onSubmit({ privacyConsent, resume, jobPosting, jobDescription, coverLetter })}>AI 분석 시작하기</button>
         </section>
         <aside className="setup-aside">
-          <span className="aside-kicker">Interview guide</span>
-          <h2>시작 전에 확인해 주세요</h2>
+          <span className="aside-kicker">Before you begin</span>
+          <h2>등록 전에 확인해 주세요</h2>
           <ol className="guide-list">
-            <li><span>01</span><div><strong>자료 분석</strong><p>직무와 경험을 바탕으로 질문과 평가 기준을 준비합니다.</p></div></li>
-            <li><span>02</span><div><strong>환경 점검</strong><p>카메라와 마이크가 정상적으로 동작하는지 확인합니다.</p></div></li>
-            <li><span>03</span><div><strong>모의 면접</strong><p>5초 준비 후 답변하며, 필요하면 꼬리질문이 이어집니다.</p></div></li>
+            <li><span>01</span><div><strong>모든 자료는 필수예요</strong><p>파일 또는 텍스트 중 편한 방식으로 입력할 수 있습니다.</p></div></li>
+            <li><span>02</span><div><strong>질문은 미리 준비돼요</strong><p>면접 중에는 질문과 평가 기준이 바뀌지 않습니다.</p></div></li>
+            <li><span>03</span><div><strong>원본 영상은 저장하지 않아요</strong><p>카메라에서는 참고용 시선 지표만 계산합니다.</p></div></li>
           </ol>
         </aside>
       </div>
