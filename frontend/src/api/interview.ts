@@ -1,8 +1,11 @@
-import type { InterviewQuestion, InterviewResult, SessionSetup } from "../types/interview";
+import type { InterviewQuestion, SessionSetup } from "../types/interview";
 import type { DeliveryMetrics } from "../perception";
 import { apiRequest } from "./client";
+import type { ReportResponse } from "./reportAdapter";
 
 export interface InterviewStatusResponse {
+  session_id: string;
+  error: string | null;
   status: "PREPARING" | "READY" | "IN_PROGRESS" | "EVALUATING" | "COMPLETED" | "FAILED";
   steps: Array<{ step_id: string; label: string; state: "PENDING" | "RUNNING" | "DONE"; detail: string | null }>;
   questions: InterviewQuestion[] | null;
@@ -44,5 +47,5 @@ export async function submitAnswer(sessionId: string, input: { question_id: stri
 }
 
 export function getReport(sessionId: string) {
-  return apiRequest<InterviewResult>(`/api/interviews/${encodeURIComponent(sessionId)}/report`);
+  return apiRequest<ReportResponse>(`/api/interviews/${encodeURIComponent(sessionId)}/report`);
 }
