@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
 import { StepContext } from "../components/StepProgress";
 import { mockQuestions, mockResult } from "../mocks/interview";
-import { AnalysisScreen } from "../screens/AnalysisScreen";
-import { DeviceCheckScreen } from "../screens/DeviceCheckScreen";
-import { EvaluationScreen } from "../screens/EvaluationScreen";
-import { InterviewEndScreen } from "../screens/InterviewEndScreen";
-import { InterviewScreen, type CapturedAnswer } from "../screens/InterviewScreen";
-import { ResultScreen } from "../screens/ResultScreen";
-import { SetupScreen } from "../screens/SetupScreen";
-import { StartScreen } from "../screens/StartScreen";
-import { createSession, submitAnswer } from "../services/api/interview";
+import { AnalysisScreen } from "../pages/AnalysisScreen";
+import { DeviceCheckScreen } from "../pages/DeviceCheckScreen";
+import { EvaluationScreen } from "../pages/EvaluationScreen";
+import { InterviewEndScreen } from "../pages/InterviewEndScreen";
+import { InterviewScreen, type CapturedAnswer } from "../pages/InterviewScreen";
+import { ResultScreen } from "../pages/ResultScreen";
+import { SetupScreen } from "../pages/SetupScreen";
+import { StartScreen } from "../pages/StartScreen";
+import { createSession, submitAnswer } from "../api/interview";
 import type { AppStep, SessionSetup } from "../types/interview";
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK !== "false";

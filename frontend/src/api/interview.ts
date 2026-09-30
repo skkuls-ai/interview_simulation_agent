@@ -1,5 +1,5 @@
-import type { InterviewQuestion, InterviewResult, SessionSetup } from "../../types/interview";
-import type { DeliveryMetrics } from "../../perception";
+import type { InterviewQuestion, InterviewResult, SessionSetup } from "../types/interview";
+import type { DeliveryMetrics } from "../perception";
 import { apiRequest } from "./client";
 
 export interface InterviewStatusResponse {
