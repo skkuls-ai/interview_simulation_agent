@@ -272,6 +272,8 @@ proof_interview/
 
 노드는 다른 노드를 직접 부르지 않고, 순서는 `graph/`에서만 정한다. A·B·E는 자기 노드만 만들고 C가 그래프에 연결한다.
 
+예외: E의 평가는 `evaluate_state` 하나가 태도·직무 적합성·일관성·질문별 호출을 동시에 처리한다. 순서대로 부르면 60초를 넘기기 때문이다. `graph/evaluate.py`는 STT 대기 → `evaluate_state` → 결과 저장만 정한다. (확정)
+
 ### 백그라운드 작업과 실행
 
 - 준비 그래프, STT 변환, 평가 그래프는 응답을 보낸 뒤 FastAPI `BackgroundTasks`로 돌린다. (확정)

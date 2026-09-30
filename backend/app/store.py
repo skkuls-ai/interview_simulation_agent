@@ -16,6 +16,8 @@ class SessionRecord:
     answer_responses: dict[str, SubmitAnswerResponse] = field(default_factory=dict)
     # GET /report 응답 (state.report에 questions·claims·checkpoints를 더한 모양)
     report_response: ReportResponse | None = None
+    # 평가 그래프 중복 실행 방지
+    evaluation_started: bool = False
 
 
 class Store:

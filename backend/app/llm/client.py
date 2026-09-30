@@ -19,6 +19,14 @@ log = logging.getLogger(__name__)
 T = TypeVar("T", bound=BaseModel)
 
 
+RATE_LIMIT_WAIT_SEC = 2.0
+
+
+def is_rate_limited(e: Exception) -> bool:
+    text = str(e)
+    return "429" in text or "RESOURCE_EXHAUSTED" in text
+
+
 class LLMError(Exception):
     """호출 실패, 시간 초과, 스키마에 맞지 않는 응답."""
 
@@ -111,6 +119,8 @@ class GeminiClient:
             except Exception as e:  # 네트워크, 시간 초과, 할당량 초과 등
                 last = e
                 log.warning("LLM %s 호출 실패 (시도 %d): %s", role, attempt, e)
+                if is_rate_limited(e) and attempt <= cfg.retries:
+                    time.sleep(RATE_LIMIT_WAIT_SEC)  # 429 는 바로 다시 부르면 또 막히기 쉬움
             # 이미 오래 기다렸으면 재시도하지 않음 (지원자 대기 시간이 두 배가 되지 않도록)
             if time.perf_counter() - t0 > cfg.timeout_sec / 2:
                 break
