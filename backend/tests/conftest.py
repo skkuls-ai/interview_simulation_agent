@@ -1,6 +1,7 @@
 import os
 
 os.environ.setdefault("FAKE_GRAPH_DELAY_SEC", "0")
+os.environ.setdefault("INTERVIEW_GRAPH_MODE", "fake")
 
 import pytest
 from fastapi.testclient import TestClient
