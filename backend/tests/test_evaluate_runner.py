@@ -371,15 +371,16 @@ def test_role_settings_for_e():
     s = LLMSettings(project="p")
     assert s.role("validator").model == "gemini-3.8-flash" and s.role("validator").timeout_sec == 15
     assert s.role("validator").retries == 0
-    assert s.role("coach").thinking_level == "LOW" and s.role("evaluator").thinking_level == "MEDIUM"
+    assert s.role("coach").thinking_level == "LOW" and s.role("evaluator").thinking_level == "LOW"
+    assert s.role("evaluator").timeout_sec == 20 and s.role("coach").timeout_sec == 25
 
 
 def test_thinking_level_env_override(monkeypatch):
     from app.nodes.evaluate.llm.settings import LLMSettings
 
-    monkeypatch.setenv("INTERVIEW_THINKING_EVALUATOR", "low")
+    monkeypatch.setenv("INTERVIEW_THINKING_EVALUATOR", "medium")
     s = LLMSettings.from_env()
-    assert s.role("evaluator").thinking_level == "LOW" and s.role("evaluator").timeout_sec == 60
+    assert s.role("evaluator").thinking_level == "MEDIUM" and s.role("evaluator").timeout_sec == 20
     assert s.role("coach").thinking_level == "LOW" and s.role("validator").thinking_level == "LOW"
     monkeypatch.setenv("INTERVIEW_THINKING_EVALUATOR", "FAST")
     with pytest.raises(Exception):

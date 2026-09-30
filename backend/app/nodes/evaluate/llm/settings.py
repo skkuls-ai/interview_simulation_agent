@@ -39,9 +39,12 @@ DEFAULT_ROLES: dict[str, RoleSettings] = {
     "follow_up_judge": RoleSettings(model="gemini-3.8-flash", thinking_level="LOW", timeout_sec=8, retries=1),
     "intro_check": RoleSettings(model="gemini-3.8-flash", thinking_level="LOW", timeout_sec=10, retries=1),
     # 백그라운드, 면접 전후: 품질 우선
-    "evaluator": RoleSettings(model="gemini-3.8-flash", thinking_level="MEDIUM", timeout_sec=60, retries=2),
-    # E 코칭 문장 (태도 조언, 질문별 피드백): 판정이 아니라 추론 수준을 낮춰 속도 우선 (9/30 실측 반영)
-    "coach": RoleSettings(model="gemini-3.8-flash", thinking_level="LOW", timeout_sec=45, retries=2),
+    # E 판정 (직무 적합성, 답변 일관성): 9/30 지원자A 실측에서 LOW 가 MEDIUM 과 판정이 같고
+    # (정상 3/3, 서류와 어긋난 답변 3/3 잡음) 전체 시간은 32초 -> 11초라 LOW 로 바꿈. 보통 3~8초라 20초 제한
+    "evaluator": RoleSettings(model="gemini-3.8-flash", thinking_level="LOW", timeout_sec=20, retries=2),
+    # E 코칭 문장 (태도 조언, 질문별 피드백): 추론 수준을 낮춰 속도 우선. 보통 5~15초라 25초 제한
+    # (9/30 실측: 45초 제한에서 504 가 42초 만에 와 전체 46초가 된 적 있음)
+    "coach": RoleSettings(model="gemini-3.8-flash", thinking_level="LOW", timeout_sec=25, retries=2),
     "analysis": RoleSettings(model="gemini-3.8-flash", thinking_level="MEDIUM", timeout_sec=90, retries=2),
     "feedback": RoleSettings(model="gemini-3.8-flash", thinking_level="HIGH", timeout_sec=120, retries=2),
     # E 검증 에이전트: 9/30 실측에서 3.7 Flash 가 429(호출 한도)로 30초까지 늦어져 3.8 Flash LOW 로 바꿈.
