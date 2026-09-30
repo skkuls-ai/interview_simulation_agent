@@ -98,7 +98,8 @@ def test_text_is_cleaned_but_lines_are_kept():
     ("resume.hwp", b"HWP Document File", "HWP"),
     ("photo.png", b"\x89PNG....", "지원하지 않는 형식"),
     ("empty.txt", b"", "빈 파일"),
-    ("short.txt", "이력서".encode(), "거의 추출하지 못했습니다"),
+    ("short.pdf", make_pdf("이력서"), "거의 추출하지 못했습니다"),
+    ("blank.txt", b"  \r\n  ", "빈 파일"),
 ])
 def test_unreadable_files_ask_for_text_input(filename, data, reason):
     with pytest.raises(DocumentError) as exc:
@@ -162,7 +163,8 @@ def test_extraction_failure_names_the_document():
     assert_error(exc, "TEXT_EXTRACTION_FAILED", "job_description")
 
 
-def test_too_short_typed_text_is_rejected():
-    with pytest.raises(DocumentError) as exc:
-        collect_documents(texts={**TEXTS, "cover_letter": "열심히 하겠습니다."}, privacy_consent=True)
-    assert_error(exc, "TEXT_EXTRACTION_FAILED", "cover_letter")
+def test_short_typed_text_and_txt_are_accepted():
+    # 글자 수 기준은 스캔 PDF 를 알아보려는 것이라 직접 입력과 TXT 에는 쓰지 않습니다.
+    docs = collect_documents(files={"resume": ("cv.txt", "이력서 본문".encode())},
+                             texts={**TEXTS, "resume": None, "cover_letter": "열심히 하겠습니다."}, privacy_consent=True)
+    assert docs.resume_text == "이력서 본문" and docs.cover_letter_text == "열심히 하겠습니다."

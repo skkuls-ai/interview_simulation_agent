@@ -29,7 +29,7 @@ DOC_LABELS = {"resume": "이력서", "job_posting": "채용공고", "job_descrip
 ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt"}
 MAX_FILE_BYTES = 10 * 1024 * 1024  # 10MB (화면 2 안내 문구와 같게)
 MAX_CHARS = 30_000                  # 너무 긴 서류는 앞부분만 (LLM 입력 한도)
-MIN_CHARS = 30                      # (제안) 이보다 적게 추출되면 스캔 PDF 등으로 보고 텍스트 입력을 안내. docs 미정
+MIN_CHARS = 30                      # (제안) PDF·DOCX 에서 이보다 적게 추출되면 스캔본으로 보고 텍스트 입력을 안내. docs 미정
 
 
 class DocumentError(ValueError):
@@ -93,11 +93,6 @@ def collect_documents(
     for f in DOC_FIELDS:
         typed = (texts.get(f) or "").strip()
         out[f] = clean_text(typed) if typed else extract_text(*files[f], field=f)
-        if len(out[f]) < MIN_CHARS:
-            raise DocumentError(
-                "TEXT_EXTRACTION_FAILED",
-                f"{DOC_LABELS[f]} 내용이 너무 짧습니다. 내용을 확인하거나 직접 입력해 주세요.", field=f,
-            )
 
     consent_at = (now or datetime.now(timezone.utc)).isoformat(timespec="seconds")
     return CollectedDocuments(
@@ -136,8 +131,11 @@ def extract_text(filename: str, data: bytes, field: str | None = None) -> str:
         raise fail("파일을 읽을 수 없습니다. 파일이 손상되었거나 암호가 걸려 있을 수 있습니다.") from None
 
     text = clean_text(raw)
-    if len(text) < MIN_CHARS:
+    # 글자 수 기준은 스캔본을 알아보려는 것이라 PDF·DOCX 에만 씁니다. TXT·직접 입력은 비어 있지만 않으면 받습니다.
+    if ext != ".txt" and len(text) < MIN_CHARS:
         raise fail("텍스트를 거의 추출하지 못했습니다. 이미지로 스캔한 PDF라면")
+    if not text:
+        raise fail("빈 파일입니다.")
     return text
 
 
