@@ -1,0 +1,14 @@
+{
+  "in_progress": {
+    "question_id": "Q-2",
+    "received": true,
+    "next_question_id": "Q-3",
+    "status": "IN_PROGRESS"
+  },
+  "last": {
+    "question_id": "Q-5",
+    "received": true,
+    "next_question_id": null,
+    "status": "EVALUATING"
+  }
+}

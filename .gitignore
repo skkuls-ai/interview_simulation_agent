@@ -1,0 +1,28 @@
+# Secrets
+.env*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Node / frontend
+node_modules/
+dist/
+*.tsbuildinfo
+
+# 저작권 원본 자료 (재배포 금지)
+data/private/
+*.xlsx
+
+# OS
+.DS_Store
+
+# 도구 작업 상태 (로컬 전용)
+.omc/
+
+# 서비스 계정 키 등 (커밋 금지)
+*-key.json
+credentials*.json
+*.pem
