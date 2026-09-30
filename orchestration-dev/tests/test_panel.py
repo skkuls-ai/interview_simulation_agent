@@ -21,6 +21,7 @@ from backend.interview.evaluation import (
 from backend.interview.prompts.evaluator import EvaluatorOutput, Hit
 from backend.interview.state import QuestionThread, SessionConfig, Turn
 from backend.llm.client import CallInfo, LLMError
+from backend.validators.quote_validator import validate_quotes
 
 from .conftest import BANK, default_answer, drive, full_consent, make_service
 
@@ -85,6 +86,20 @@ def test_evidence_matching_tolerates_spacing_but_not_invention():
     assert evidence_in("기능을 필수와 선택으로 나누는 표를 만들었", src)  # 어미 차이 정도는 허용
     assert not evidence_in("매출을 두 배로 늘렸습니다", src)
     assert not evidence_in("표", src)  # 너무 짧은 인용
+
+
+def test_quote_validator_ignores_fillers_and_issues_source_offsets_and_ids():
+    source = "기능을, 음, 필수와 선택으로 나누는 표를 만들어 팀에 제안했습니다."
+    quotes = validate_quotes(
+        ["기능을 필수와 선택으로 나누는 표를 만들어 팀에 제안했습니다", "매출을 두 배로 늘렸습니다"],
+        source,
+        "Q001",
+    )
+
+    assert len(quotes) == 1
+    assert quotes[0].quote_id == "QT-001"
+    assert source[quotes[0].start:quotes[0].end] == quotes[0].text
+    assert "음" in quotes[0].text
 
 
 def test_check_output_catches_common_errors():
@@ -207,4 +222,7 @@ def test_undetermined_question_caps_decision_at_hold(tmp_path):
     assert chro["undetermined_threads"] == [first_q]
     assert chro["decision"] == "hold"  # 나머지는 모두 5점이지만 판단 보류 문항 때문에 최대 보류
     assert done["detail"]["evaluations"][first_q]["score"] is None
+    quotes = done["detail"]["final_feedback"]["quotes"]
+    assert quotes and len({quote["quote_id"] for quote in quotes}) == len(quotes)
+    assert all(quote["quote_id"].startswith("QT-") for quote in quotes)
     s.shutdown()

@@ -348,10 +348,19 @@ class CompetencyAdvice(_Model):
     better_answer_hint: str | None = None
 
 
+class Quote(_Model):
+    quote_id: str = Field(pattern=r"^QT-\d{3}$")
+    question_id: str
+    text: str
+    start: int = Field(ge=0)
+    end: int = Field(gt=0)
+
+
 class FinalFeedback(_Model):
     headline: str
     strengths: list[str]
     improvements: list[CompetencyAdvice]
+    quotes: list[Quote] = Field(default_factory=list)
     intro_feedback: IntroEvaluation | None = None
     time_management: TimeReport
     follow_up_risks: list[FollowUpRisk] = Field(default_factory=list)

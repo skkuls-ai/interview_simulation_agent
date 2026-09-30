@@ -24,6 +24,7 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.types import interrupt
 
 from ..question_bank.models import QuestionBank
+from ..validators.quote_validator import validate_quotes
 from . import phrases
 from .agents import InterviewAgents
 from .blueprint import PlannedQuestion
@@ -425,8 +426,21 @@ def build_interview_graph(bank: QuestionBank, agents: InterviewAgents, checkpoin
         for th in threads:
             if th.stage == "main" and th.quality:
                 quality_counts[th.quality.value] = quality_counts.get(th.quality.value, 0) + 1
+        quotes = []
+        next_quote_id = 1
+        for thread in threads:
+            evaluation = state.get("evaluations", {}).get(thread.thread_id)
+            if thread.stage != "main" or evaluation is None or not thread.question_id:
+                continue
+            source = "\n".join(
+                turn.text for turn in thread.turns if turn.speaker == "candidate" and turn.kind == "answer"
+            )
+            evidence = [hit.evidence for hit in [*evaluation.positive_hits, *evaluation.negative_hits]]
+            validated = validate_quotes(evidence, source, thread.question_id, start_index=next_quote_id)
+            quotes.extend(validated)
+            next_quote_id += len(validated)
         fb = fb.model_copy(update={"time_management": report, "intro_feedback": state.get("intro_evaluation"),
-                                   "follow_up_risks": risks, "answer_quality": quality_counts})
+                                   "follow_up_risks": risks, "answer_quality": quality_counts, "quotes": quotes})
         return {"time_report": report, "final_feedback": fb, "phase": "done"}
 
     # ------------------------------------------------------------ 조립

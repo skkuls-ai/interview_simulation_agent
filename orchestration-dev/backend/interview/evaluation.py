@@ -16,15 +16,14 @@ from __future__ import annotations
 
 import logging
 import math
-import re
 import statistics
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from difflib import SequenceMatcher
 from typing import Protocol
 
 from ..llm.client import JsonLLM, LLMError
 from ..question_bank.models import Question, QuestionBank
+from ..validators.quote_validator import evidence_in
 from .agents import StubEvaluationAgents
 from .blueprint import InterviewBlueprint
 from .prompts import evaluator as P
@@ -60,27 +59,6 @@ class LLMGate:
 
 
 # ================================================================ 코드 검증
-
-_norm_re = re.compile(r"[\s\.,!?'\"“”‘’·…~\-()\[\]]")
-
-
-def _norm(text: str) -> str:
-    return _norm_re.sub("", text)
-
-
-def evidence_in(quote: str, source: str) -> bool:
-    """인용이 지원자 발언에 있는지. 공백과 문장부호 차이는 무시하고, 거의 같은 발췌(85% 이상)도 인정."""
-    q, s = _norm(quote), _norm(source)
-    if len(q) < 4:
-        return False
-    if q in s:
-        return True
-    n = len(q)
-    if n > len(s):
-        return SequenceMatcher(None, q, s).ratio() >= EVIDENCE_MATCH
-    step = max(1, n // 10)
-    return any(SequenceMatcher(None, q, s[i:i + n]).ratio() >= EVIDENCE_MATCH for i in range(0, len(s) - n + 1, step))
-
 
 def check_output(out: P.EvaluatorOutput, question: Question, thread: QuestionThread,
                  points: list[VerificationPoint]) -> list[str]:
