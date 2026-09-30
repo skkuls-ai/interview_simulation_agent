@@ -6,7 +6,8 @@
     1) 태도 측정값을 코드로 계산 (attitude.py)
     2) LLM 호출 4개를 동시에: 태도 조언, 직무 적합성, 답변 일관성, 질문별 피드백(5개를 한 번에)
     3) 코드 검증 (rules.py): 인용 위치, refs, 금지 표현, 근거 없는 판정
-    4) 검증 에이전트 1회: 코드 검증을 통과한 결과만 검토. 실패하면 코드 검증 결과로 진행
+    4) 검증 에이전트 1회: 판정이 있는 직무 적합성, 일관성만 검토. 두 호출이 끝나는 즉시 시작해
+       질문별 피드백과 시간이 겹치게 한다. 15초 안에 답이 없거나 실패하면 코드 검증 결과로 진행
     5) 무효인 호출만 이유를 넘겨 1회 재평가 → 다시 코드 검증, 검증 에이전트
     6) 남은 문제는 규칙대로 정리 (근거 없는 판정은 WITHHELD), QT- 발급, Report 조립
 
@@ -39,6 +40,8 @@ FAILED_NEXT_ACTION = "이 질문의 피드백을 만들지 못했습니다. 답�
 NO_ADVICE = "답변이 기록되지 않아 말투 조언을 드릴 수 없습니다."
 
 TARGETS = ("attitude", "job_fit", "consistency", "per_question")
+VERDICT_TARGETS = ("job_fit", "consistency")  # 검증 에이전트가 보는 대상 (판정이 있는 영역)
+ROLE = {"attitude": "coach", "per_question": "coach", "job_fit": "evaluator", "consistency": "evaluator"}
 
 
 @dataclass
@@ -84,14 +87,12 @@ class Evaluator:
         todo = [t for t in TARGETS if not ctx.skip(t)]
         outs, results, issues = {}, {}, {}
         self._round(ctx, todo, outs, results, issues, feedback=None)
-        self._review(ctx, [t for t in todo if outs.get(t) is not None and not issues[t]], issues)
 
         retry = [t for t in todo if issues[t]]
         if retry:
             self.trace.retried = list(retry)
             first = {t: list(issues[t]) for t in retry}
             self._round(ctx, retry, outs, results, issues, feedback=first)
-            self._review(ctx, [t for t in retry if outs.get(t) is not None and not issues[t]], issues)
         self.trace.issues = {t: v for t, v in issues.items() if v}
 
         report = self._assemble(ctx, results)
@@ -122,9 +123,10 @@ class Evaluator:
 
     def _call(self, ctx: "_Context", target: str, feedback: list[str] | None):
         system, prompt, schema = ctx.request(target, feedback)
-        return self._timed(target, "evaluator", system, prompt, schema, retry=feedback is not None)
+        return self._timed(target, ROLE[target], system, prompt, schema, retry=feedback is not None)
 
     def _round(self, ctx, targets, outs, results, issues, feedback):
+        """대상들을 동시에 호출하고, 판정 영역 둘이 끝나면 나머지를 기다리지 않고 바로 검증 에이전트를 부른다."""
         def one(t):
             try:
                 out = self._call(ctx, t, (feedback or {}).get(t))
@@ -133,12 +135,22 @@ class Evaluator:
             res, iss = ctx.check(t, out, self.finder)
             return t, out, res, iss
 
+        def collect(future):
+            t, out, res, iss = future.result()
+            outs[t] = out
+            issues[t] = iss
+            if res is not None:
+                results[t] = res
+
         with ThreadPoolExecutor(max_workers=max(1, min(self.max_concurrency, len(targets)))) as pool:
-            for t, out, res, iss in pool.map(one, targets):
-                outs[t] = out
-                issues[t] = iss
-                if res is not None:
-                    results[t] = res
+            futures = {t: pool.submit(one, t) for t in targets}
+            verdict = [t for t in VERDICT_TARGETS if t in futures]
+            for t in verdict:
+                collect(futures[t])
+            self._review(ctx, [t for t in verdict if outs.get(t) is not None and not issues[t]], issues)
+            for t, f in futures.items():
+                if t not in verdict:
+                    collect(f)
 
     def _review(self, ctx, targets, issues):
         if not self.use_reviewer or not targets:

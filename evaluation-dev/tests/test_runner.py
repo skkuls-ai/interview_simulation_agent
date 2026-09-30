@@ -75,13 +75,13 @@ def target_of(system: str) -> str:
 class FakeLLM:
     """대상별로 준비한 응답을 차례로 돌려준다. 응답이 예외면 던진다. 호출 기록을 남긴다."""
 
-    def __init__(self, scripted: dict | None = None, review=None, delay: float = 0.0):
+    def __init__(self, scripted: dict | None = None, review=None, delay: float = 0.0, delays: dict | None = None):
         base = mock_outputs()
         self.scripted = {t: list((scripted or {}).get(t, [base[t]])) for t in base}
         self.review = review  # None: 모두 유효, 함수(targets)->ReviewOut, 또는 예외
         self.calls: list[tuple[str, str]] = []
         self.prompts: dict[str, list[str]] = {}
-        self.delay, self.active, self.max_active = delay, 0, 0
+        self.delay, self.delays, self.active, self.max_active = delay, delays or {}, 0, 0
         self.lock = threading.Lock()
 
     def generate_json(self, role, system, prompt, schema):
@@ -92,7 +92,7 @@ class FakeLLM:
             self.active += 1
             self.max_active = max(self.max_active, self.active)
         try:
-            time.sleep(self.delay)
+            time.sleep(self.delays.get(t, self.delay))
             if t == "reviewer":
                 targets = list(json.loads(prompt.split("## 검토할 피드백\n", 1)[1]))
                 if isinstance(self.review, Exception):
@@ -138,7 +138,24 @@ def test_four_calls_run_in_parallel_then_one_review():
     run(llm)
     assert llm.max_active == 4
     assert [t for _, t in llm.calls[-1:]] == ["reviewer"] and llm.calls[-1][0] == "validator"
-    assert all(role == "evaluator" for role, t in llm.calls if t != "reviewer")
+    roles = {t: role for role, t in llm.calls}
+    assert roles == {"job_fit": "evaluator", "consistency": "evaluator", "attitude": "coach",
+                     "per_question": "coach", "reviewer": "validator"}
+
+
+def test_reviewer_sees_only_verdict_areas():
+    llm = FakeLLM()
+    run(llm)
+    reviewed = json.loads(llm.prompts["reviewer"][0].split("## 검토할 피드백\n", 1)[1])
+    assert set(reviewed) == {"job_fit", "consistency"}
+
+
+def test_reviewer_overlaps_slow_per_question_call():
+    llm = FakeLLM(delays={"job_fit": 0.02, "consistency": 0.02, "attitude": 0.02, "per_question": 0.3, "reviewer": 0.05})
+    _, ev = run(llm)
+    c = {x["target"]: x for x in ev.trace.calls}
+    assert c["reviewer"]["start"] < c["per_question"]["end"]  # 질문별 피드백을 기다리지 않고 검증 시작
+    assert c["reviewer"]["start"] >= max(c["job_fit"]["end"], c["consistency"]["end"]) - 0.01
 
 
 def test_steps_are_reported():
@@ -276,6 +293,8 @@ def test_reviewer_rejection_retries_only_that_target():
     _, ev = run(llm)
     assert ev.trace.retried == ["consistency"] and llm.count("consistency") == 2 and llm.count("job_fit") == 1
     assert llm.count("reviewer") == 2
+    second = json.loads(llm.prompts["reviewer"][1].split("## 검토할 피드백\n", 1)[1])
+    assert set(second) == {"consistency"}  # 재평가 뒤에는 다시 쓴 영역만 검토
 
 
 def test_reviewer_failure_falls_back_to_code_check():
@@ -311,6 +330,47 @@ def test_trace_records_each_call_with_timing():
     targets = sorted(c["target"] for c in ev.trace.calls)
     assert targets == ["attitude", "consistency", "job_fit", "per_question", "reviewer"]
     review = next(c for c in ev.trace.calls if c["target"] == "reviewer")
-    first = [c for c in ev.trace.calls if c["target"] != "reviewer"]
+    verdict = [c for c in ev.trace.calls if c["target"] in ("job_fit", "consistency")]
     assert all(c["ok"] and c["end"] >= c["start"] for c in ev.trace.calls)
-    assert review["start"] >= max(c["end"] for c in first) - 0.05  # 검증은 평가 4개가 끝난 뒤
+    assert review["start"] >= max(c["end"] for c in verdict) - 0.05  # 검증은 판정 영역 둘이 끝난 뒤
+
+
+# ------------------------------------------------------------------ LLM 클라이언트: 429 대기, 역할 설정
+
+
+def test_rate_limited_call_waits_then_retries(monkeypatch):
+    pytest.importorskip("google.genai")
+    from evaluate.llm import client as C
+    from evaluate.llm.settings import LLMSettings
+
+    class Resp:
+        text = '{"items": []}'
+        usage_metadata = None
+
+    class Models:
+        def __init__(self):
+            self.n = 0
+
+        def generate_content(self, **kw):
+            self.n += 1
+            if self.n == 1:
+                raise RuntimeError("429 RESOURCE_EXHAUSTED")
+            return Resp()
+
+    class Fake:
+        models = Models()
+
+    slept = []
+    monkeypatch.setattr(C.time, "sleep", lambda s: slept.append(s))
+    cli = C.GeminiClient(LLMSettings(project="p"), client=Fake())
+    out, info = cli.generate_json("coach", "sys", "prompt", P.ReviewOut)
+    assert info.attempts == 2 and slept == [C.RATE_LIMIT_WAIT_SEC]
+
+
+def test_role_settings_for_e():
+    from evaluate.llm.settings import LLMSettings
+
+    s = LLMSettings(project="p")
+    assert s.role("validator").model == "gemini-3.8-flash" and s.role("validator").timeout_sec == 15
+    assert s.role("validator").retries == 0
+    assert s.role("coach").thinking_level == "LOW" and s.role("evaluator").thinking_level == "MEDIUM"

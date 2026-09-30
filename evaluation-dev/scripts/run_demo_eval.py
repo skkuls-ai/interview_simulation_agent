@@ -6,7 +6,8 @@
     python scripts/run_demo_eval.py --fake       # LLM 없이 흐름만 확인 (mock 문구를 그대로 돌려줌)
 
 필요: gcloud auth application-default login, 환경변수 GOOGLE_CLOUD_PROJECT
-모델: INTERVIEW_MODEL_EVALUATOR (기본 gemini-3.8-flash), INTERVIEW_MODEL_VALIDATOR (기본 gemini-3.7-flash)
+모델: INTERVIEW_MODEL_EVALUATOR (판정, MEDIUM), INTERVIEW_MODEL_COACH (조언과 질문별, LOW),
+      INTERVIEW_MODEL_VALIDATOR (검증, LOW, 15초 제한). 기본은 모두 gemini-3.8-flash
 
 결과는 var/eval/report_<시각>_<회차>.json 에 저장하고, 판정과 호출별 시간을 출력합니다.
 """

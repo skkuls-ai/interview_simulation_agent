@@ -39,10 +39,13 @@ DEFAULT_ROLES: dict[str, RoleSettings] = {
     "intro_check": RoleSettings(model="gemini-3.8-flash", thinking_level="LOW", timeout_sec=10, retries=1),
     # 백그라운드, 면접 전후: 품질 우선
     "evaluator": RoleSettings(model="gemini-3.8-flash", thinking_level="MEDIUM", timeout_sec=60, retries=2),
+    # E 코칭 문장 (태도 조언, 질문별 피드백): 판정이 아니라 추론 수준을 낮춰 속도 우선 (9/30 실측 반영)
+    "coach": RoleSettings(model="gemini-3.8-flash", thinking_level="LOW", timeout_sec=45, retries=2),
     "analysis": RoleSettings(model="gemini-3.8-flash", thinking_level="MEDIUM", timeout_sec=90, retries=2),
     "feedback": RoleSettings(model="gemini-3.8-flash", thinking_level="HIGH", timeout_sec=120, retries=2),
-    # 만든 모델과 다른 모델로 검사
-    "validator": RoleSettings(model="gemini-3.7-flash", thinking_level="MEDIUM", timeout_sec=60, retries=2),
+    # E 검증 에이전트: 9/30 실측에서 3.7 Flash 가 429(호출 한도)로 30초까지 늦어져 3.8 Flash LOW 로 바꿈.
+    # 15초 안에 답이 없으면 재시도하지 않고 코드 검증 결과로 진행 (화면 6 대기 상한)
+    "validator": RoleSettings(model="gemini-3.8-flash", thinking_level="LOW", timeout_sec=15, retries=0),
 }
 
 
