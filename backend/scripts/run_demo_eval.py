@@ -4,7 +4,8 @@
     python scripts/run_demo_eval.py              # 실제 Gemini 1회 (backend 폴더에서)
     python scripts/run_demo_eval.py --repeat 3   # 3회 실행 후 판정 흔들림과 시간 요약
     python scripts/run_demo_eval.py --fake       # LLM 없이 흐름만 확인 (mock 문구를 그대로 돌려줌)
-    python scripts/run_demo_eval.py --mismatch --repeat 3   # 서류와 어긋난 답변을 잡아내는지 확인
+    python scripts/run_demo_eval.py --mismatch --repeat 3   # 서류와 어긋난 답변을 잡아내는지 확인 (숫자를 부풀림)
+    python scripts/run_demo_eval.py --real-analysis --mismatch-down --repeat 3   # 발표 시연 시나리오 (숫자를 줄여 말함)
     python scripts/run_demo_eval.py --real-analysis --repeat 3   # A 의 실제 서류 분석 결과로 E 실행 (앱과 같은 입력)
 
 필요: gcloud auth application-default login, 환경변수 GOOGLE_CLOUD_PROJECT
@@ -94,10 +95,18 @@ def real_analysis_input(client, qa, save_to: Path):
     return inp
 
 
-def mismatch_qa() -> list[dict]:
+MISMATCH = {
+    # 서류(이력서)는 "평가용 질문 50개". Q-1 자기소개도 50개라고 말하고, Q-4 만 다르게 말한다.
+    "up": (("평가용 질문 50개에 대해", "평가용 질문 100개에 대해"), ("50개 중 30개", "100개 중 60개"), ("36개로", "72개로")),
+    "down": (("평가용 질문 50개에 대해", "평가용 질문 25개에 대해"), ("50개 중 30개", "25개 중 15개"), ("36개로", "18개로")),
+}
+MISMATCH_LABEL = {"up": "100개 중 60개에서 72개로 (부풀림)", "down": "25개 중 15개에서 18개로 (줄여 말함, 발표 시연용)"}
+
+
+def mismatch_qa(direction: str = "up") -> list[dict]:
     qa = [dict(q) for q in M.QA]
     q4 = next(q for q in qa if q["question_id"] == "Q-4")
-    for a, b in (("평가용 질문 50개에 대해", "평가용 질문 100개에 대해"), ("50개 중 30개", "100개 중 60개"), ("36개로", "72개로")):
+    for a, b in MISMATCH[direction]:
         assert a in q4["answer_text"]
         q4["answer_text"] = q4["answer_text"].replace(a, b)
     return qa
@@ -108,6 +117,8 @@ def main() -> None:
     ap.add_argument("--fake", action="store_true", help="LLM 없이 실행")
     ap.add_argument("--no-review", action="store_true", help="검증 에이전트 없이 실행")
     ap.add_argument("--repeat", type=int, default=1, help="반복 실행 횟수 (판정 흔들림 확인)")
+    ap.add_argument("--mismatch-down", action="store_true",
+                    help="Q-4 답변의 평가용 질문 수를 서류보다 작게(25개) 말함. 발표 시연 시나리오")
     ap.add_argument("--mismatch", action="store_true",
                     help="Q-4 답변의 평가용 질문 수를 서류(50개)와 다르게 바꿔 일관성이 NEEDS_WORK 로 잡히는지 확인")
     ap.add_argument("--real-analysis", action="store_true",
@@ -116,10 +127,11 @@ def main() -> None:
     args = ap.parse_args()
 
     qa = None
-    if args.mismatch:
-        qa = mismatch_qa()
+    if args.mismatch or args.mismatch_down:
+        direction = "down" if args.mismatch_down else "up"
+        qa = mismatch_qa(direction)
         EXPECTED["consistency"] = "NEEDS_WORK"
-        print("입력: --mismatch (Q-4 답변을 평가용 질문 100개 중 60개에서 72개로 바꿈, 서류는 50개)")
+        print(f"입력: Q-4 답변을 평가용 질문 {MISMATCH_LABEL[direction]} 바꿈, 서류는 50개")
 
     if args.fake:
         make_llm, model = FakeLLM, "fake"
