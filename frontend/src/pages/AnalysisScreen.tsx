@@ -20,6 +20,8 @@ const steps = [
   ["질문 검수 중", "질문 수와 연결 정보의 유효성을 확인합니다."],
 ] as const;
 
+const doneLabel = (label: string) => label.replace(/는 중$/, "기 완료").replace(/ 중$/, " 완료");
+
 export function AnalysisScreen({ sessionId, onComplete, onFail }: AnalysisScreenProps) {
   const [active, setActive] = useState(0);
   const server = useSessionStatus(sessionId, (status) => status === "READY");
@@ -44,7 +46,7 @@ export function AnalysisScreen({ sessionId, onComplete, onFail }: AnalysisScreen
           {rows.map((row) => (
             <div className={`process-step ${row.state}`} key={row.title}>
               <span>{row.state === "is-done" ? <Check size={17} /> : row.state === "is-active" ? <LoaderCircle className="spin-icon" size={17} /> : <FileSearch size={17} />}</span>
-              <div><strong>{row.title}</strong><p>{row.detail}</p></div>
+              <div><strong>{row.state === "is-done" ? doneLabel(row.title) : row.title}</strong><p>{row.detail}</p></div>
             </div>
           ))}
         </div>
