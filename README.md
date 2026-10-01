@@ -1,4 +1,4 @@
-# ProofInterview — 서류 기반 AI 모의 면접
+# 면까몰 (ProofInterview) — 서류 기반 AI 모의 면접
 
 **내 지원서류를 파고드는 면접관, 근거로 설명하는 평가.**
 이력서·채용공고·직무기술서·자기소개서 4종을 넣으면 질문 5개짜리 음성 모의 면접을 진행하고, 답변 인용을 근거로 한 피드백(태도·직무 적합성·답변 일관성)을 보여 주는 웹 서비스입니다. AI Agent 전문가 양성과정 미니 팀 프로젝트(2026.9.28~10.2)의 1차 MVP입니다.
@@ -15,7 +15,7 @@
 | 프런트 | React, Vite, TypeScript (카메라 시선 측정은 브라우저에서 계산) | `frontend/` |
 | 백엔드 | FastAPI, API 4개, 메모리 세션 (워커 1개 고정) | `backend/app/` |
 | LLM·STT | Gemini (기본 `gemini-3.8-flash`), 음성 변환도 Gemini | `backend/app/llm/`, `backend/app/audio/` |
-| 서류 분석·질문·평가 | 준비 그래프 / 평가 그래프 | `backend/app/graph/`, `backend/app/nodes/` |
+| 서류 분석·질문 생성·평가 | 준비 그래프 / 평가 그래프 | `backend/app/graph/`, `backend/app/nodes/` |
 | 인용·질문 검증 | 코드 검증 | `backend/app/validators/` |
 | 고정 데모 데이터 | 지원자A 서류 4종, mock 응답 | `shared/mock/` |
 
@@ -80,7 +80,7 @@ VITE_USE_MOCK=false npm run dev         # http://localhost:5173, /api는 8000으
 ## 데모 데이터
 
 - 고정 데모 서류(지원자A): `shared/mock/sample_inputs.json` — 4칸에 그대로 붙여 넣으면 됩니다.
-- 현재 데모의 면접 질문 5개는 `shared/mock/session_ready.json`의 **고정 질문**입니다. 서류 맞춤 질문 생성 노드(`backend/app/nodes/prep/technical_questions.py`, `competency_questions.py`)는 코드에 있으나 준비 그래프에는 아직 연결하지 않았습니다.
+- 면접 질문 5개는 서류를 분석한 뒤 만들어집니다: Q-1 자기소개(고정 문구), Q-2·Q-3 인성(질문 은행에서 서류에 맞게 선택), Q-4·Q-5 기술(LLM 생성 후 코드 검증). 가짜 진행기(키 없음)에서는 `shared/mock/session_ready.json`의 고정 질문을 씁니다.
 - 인성 질문 은행: `backend/app/banks/` (잡다에서 제공하는 「역량기반 구조화 면접 질문 150선」, 출처는 `backend/app/banks/README.md`).
 
 ## 테스트

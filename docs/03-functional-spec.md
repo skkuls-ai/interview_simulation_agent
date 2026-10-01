@@ -1,7 +1,9 @@
 # 기능명세서
 
 > 한 줄 요약: 화면 뒤에서 일어나는 처리(서류 분석 → 질문 생성 → 녹음·STT → 피드백 → 인용 검증)를 기능 ID별로 입력/처리/출력/규칙/예외로 정의한다.
-> 기준: Claude Docs 2026-09-29 버전 「화면별 기능정의서」·「개발 계약·담당표」 (**(제안)** = 미확정)
+> 기준: 2026-10-01 구현 기준 (원본: Claude Docs 2026-09-29 버전)
+>
+> 구현 반영: 본문의 「미정」·「(제안)」은 기획 단계 표시다. 구현에서 해결·채택된 내용은 각 문서의 「결정 결과」 절과 [docs/README.md](README.md)의 구현 현황이 우선한다.
 > 관련: 화면 [docs/02-screen-flow.md](02-screen-flow.md), 기획 [docs/01-PRD.md](01-PRD.md), API·스키마 [docs/04-api-schema.md](04-api-schema.md), 아키텍처 [docs/05-architecture.md](05-architecture.md), 테스트 [docs/08-test-scenarios.md](08-test-scenarios.md)
 
 ## 0. 공통 규칙
@@ -73,6 +75,8 @@ stateDiagram-v2
 | 예외 | LLM 출력 실패 → 1회 재시도 후 fallback. 분석 60초 초과·실패는 화면 3에서 「다시 시도」 |
 
 ### F-004 질문 5개 생성·고정 순서 배정 (담당 B)
+
+> 구현: Q-1 자기소개는 고정 문구(`graph/prepare.py`), Q-2·Q-3 인성은 질문 은행(`banks/`, 잡다 제공 150선)에서 서류에 맞게 선택(`llm/competency_question_agent.py`), Q-4·Q-5 기술은 LLM 생성 후 코드 검증(`llm/technical_question_agent.py`). 키가 없는 가짜 진행기는 `shared/mock/session_ready.json`의 고정 질문을 쓴다.
 
 | 항목 | 내용 |
 | --- | --- |
@@ -151,9 +155,15 @@ stateDiagram-v2
 
 - `GET /api/interviews/{id}/report`. `COMPLETED`가 아니면 `409 NOT_READY`. 출력 `Report { attitude, job_fit, consistency, per_question }` + 화면 7용 `questions`, `claims`, `checkpoints`(다른 API 호출 불필요). 「다시 연습하기」는 API 4개에 재생성 호출이 없어 방식 미정.
 
-## 3. 미정 사항 (킥오프에서 정할 것)
+## 3. 결정 결과
 
-- LLM·STT 제공사(학교 GCP Vertex AI 가정)와 호출 한도
-- 질문 음성(TTS) 방식: 브라우저 vs 서버 모델 (서버면 API 5개)
-- 영역 판정 집계 규칙
-- 그 밖에 이 문서에서 미정으로 표시한 항목: 텍스트 추출 최소 글자 수, 질문 검증 실패 시 재생성 횟수, 인용 전부 제거 시 처리, STT 실패 시 음성 보관 정책
+| 항목 | 결과 |
+| --- | --- |
+| LLM·STT | Gemini(`gemini-3.8-flash`). STT는 Gemini 오디오 입력(`audio/gemini_stt.py`, `STT_MODE`·`STT_MODEL`), 한 답변당 25초 제한 |
+| 질문 음성(TTS) | 브라우저 방식, API 4개 유지 |
+| 영역 판정 집계 | E의 `evaluate_state` 규칙: 인식된 답변이 2개 미만이면 직무 적합성·일관성은 `WITHHELD`, 근거 인용 없는 판정은 `WITHHELD` |
+| 텍스트 추출 최소 글자 수 | 30자. PDF·DOCX에서 이보다 적게 추출되면 스캔본으로 보고 텍스트 입력을 안내. TXT·직접 입력은 비어 있지 않으면 받음 |
+| 질문 검증 실패 시 재생성 | 기술 질문은 근거 검증 실패 시 최대 2회 시도(`MAX_GROUNDING_ATTEMPTS`). 분석이 부족하면 `insufficient_analysis`로 기록하고 해당 질문은 만들지 않음 |
+| 인용 비교 규칙 | 공백·줄바꿈·문장부호를 지우고 비교, 근거 인정 최소 8자, 유사 문장 매칭 없음. 위치는 코드가 원문에서 다시 계산 |
+| 인용이 모두 제거된 판정 | `WITHHELD`(판단 보류) |
+| STT 실패 시 음성 보관 | 보관하지 않음. 변환 성공·무음·실패 모두 음성 파일을 삭제 |

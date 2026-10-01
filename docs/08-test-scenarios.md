@@ -2,7 +2,7 @@
 
 > 한 줄 요약: 수요일 저녁 MVP 완료 기준, 화면별 시나리오(정상·예외), 백엔드 코드 검증 항목, 발표 리허설·데모 fallback을 한 곳에 모은 QA 문서다.
 >
-> 기준: Claude Docs 2026-09-29 버전
+> 기준: 2026-10-01 구현 기준 (원본: Claude Docs 2026-09-29 버전)
 >
 > 관련 문서: [docs/02-screen-flow.md](02-screen-flow.md) · [docs/03-functional-spec.md](03-functional-spec.md) · [docs/04-api-schema.md](04-api-schema.md) · [docs/06-wbs-schedule.md](06-wbs-schedule.md) · 고정 데모 입력은 [shared/mock/README.md](../shared/mock/README.md)
 
@@ -138,3 +138,15 @@
 | 진행 시간 부족 | [docs/06-wbs-schedule.md](06-wbs-schedule.md)의 축소 순서에 따라 시연 범위를 줄이고 영상으로 보완 |
 
 결정 담당(누가 fallback 전환을 선언하는지)과 발표 시연자는 킥오프 이후 정한다. (미정)
+
+## 6. 자동 테스트 대응표 (2026-10-01)
+
+백엔드 항목 중 자동 테스트(`backend/tests`, `cd backend && pytest`)로 덮인 것이다. 화면 시나리오(2절)는 수동 실행이며 회귀 결과표는 아직 취합하지 않았다.
+
+| ID | 자동 테스트 |
+|---|---|
+| T-207 | `test_audio.py`, `test_gemini_stt.py` (성공·무음·실패·빈 파일 모두 파일 삭제) |
+| T-208, T-209, T-212, T-219 | `test_api_contract.py` |
+| T-211, T-217, T-218 | `test_api_loop.py` |
+| T-216 | `test_graph_evaluate.py` (변환이 끝난 뒤 평가 시작) |
+| T-201~203, T-205~206, T-213~215 | 담당(A·B·E)의 `test_prep_analysis.py`, `test_competency_questions.py`, `test_evaluate_*` 등. 항목별 대응은 미확인 |
