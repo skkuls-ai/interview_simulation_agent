@@ -666,6 +666,7 @@ h1, h2, p { margin-top: 0; }
 .interview-rules strong { margin-bottom: 2px; font-size: 13px; }
 .interview-rules span { color: var(--content-muted); font-size: 11px; line-height: 1.5; }
 .device-error { margin: -8px 0 14px; color: var(--danger); font-size: 12px; line-height: 1.5; }
+.document-error { margin: 8px 0 0; color: var(--danger); font-size: 12px; line-height: 1.5; }
 .device-warning { margin: 10px 0 0; color: var(--content-muted); font-size: 12px; line-height: 1.5; }
 .device-panel > .button + .button { margin-top: 10px; }
 
