@@ -7,7 +7,7 @@ services:
     expose:
       - "8000"
     volumes:
-      # 가짜 진행기(graph/fake.py)가 읽는 mock. 진짜 그래프(W-20)로 바뀌면 제거
+      # 키가 없을 때 쓰는 가짜 진행기(graph/fake.py)와 임시 질문이 읽는 mock. 키가 있어도 질문은 이 파일에서 읽으므로 유지한다
       - ./shared/mock:/srv/shared/mock:ro
 
   frontend:
