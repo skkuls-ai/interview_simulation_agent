@@ -690,7 +690,7 @@ h1, h2, p { margin-top: 0; }
 .report-heading, .verdict-card header { margin-bottom: 22px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .report-heading h2, .verdict-card h2 { margin: 0; font-size: 21px; }
 .reference-badge, .verdict { padding: 7px 10px; color: var(--content-muted); background: var(--bg-soft); border-radius: 999px; font-size: 11px; font-weight: 750; }
-.metric-grid { margin-bottom: 20px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.metric-grid { margin-bottom: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
 .metric-grid article { padding: 17px; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 5px 9px; background: #fafaf8; border: 1px solid var(--border-regular); border-radius: var(--radius-md); }
 .metric-grid article svg { grid-row: 1 / 3; }
 .metric-grid span { color: var(--content-muted); font-size: 11px; }
@@ -714,11 +714,21 @@ h1, h2, p { margin-top: 0; }
 .review-columns ul { margin: 8px 0 0; padding-left: 18px; font-size: 12px; line-height: 1.65; }
 .next-action { display: flex; align-items: center; gap: 12px; }
 .next-action strong { font-size: 13px; }
+/* 화면 7 근거 표시 (W-27): 태도 말투 인용, 판정 근거, 질문별 연결 정보 */
+.attitude-quotes { margin-top: 18px; display: grid; gap: 8px; }
+.attitude-quotes small, .evidence-list small, .linked-info small { color: var(--content-muted); font-size: 10px; font-weight: 800; letter-spacing: .05em; }
+.attitude-quotes blockquote { margin: 0; padding: 12px 15px; background: var(--bg-soft); border-radius: var(--radius-md); font-size: 13px; line-height: 1.65; }
+.attitude-quotes blockquote span { margin-right: 8px; color: var(--content-muted); font-size: 11px; font-weight: 800; }
+.verdict-card blockquote + blockquote { margin-top: 10px; }
+.evidence-list { margin-top: 18px; }
+.evidence-list ul, .linked-info ul { margin: 8px 0 0; padding-left: 18px; color: var(--content-muted); font-size: 12px; line-height: 1.65; }
+.linked-info { padding: 0 !important; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; background: transparent !important; }
+.linked-info article { padding: 16px; background: #fafaf8; border: 1px dashed var(--border-strong); border-radius: var(--radius-md); }
 
 @media (max-width: 900px) {
   .upload-layout { grid-template-columns: 1fr; }
   .start-steps { grid-template-columns: 1fr; }
-  .metric-grid { grid-template-columns: 1fr; }
+  .metric-grid { grid-template-columns: repeat(2, 1fr); }
   .start-copy { width: min(680px, calc(100% - 160px)); }
   .competency-tile-body { width: 68px; height: 68px; border-radius: 20px; }
   .competency-tile-3 .competency-tile-body { width: 76px; height: 62px; }
