@@ -64,7 +64,9 @@ export function toInterviewResult(report: ReportResponse): InterviewResult {
   });
 
   return {
-    summary: report.attitude.advice[0] ?? report.job_fit.reason,
+    // 맨 위 요약: 핵심(서류와 답변 비교) 판정 두 개를 코드가 문장으로 만든다. LLM 문장을 쓰지 않아 늘 같은 모양
+    summary: `직무 적합성은 「${VERDICT_LABEL[report.job_fit.verdict] ?? "판단 보류"}」, 답변 일관성은 「${
+      VERDICT_LABEL[report.consistency.verdict] ?? "판단 보류"}」입니다. 판정마다 근거가 된 내 답변 문장을 아래에서 확인해 보세요.`,
     attitude: {
       advice: report.attitude.advice,
       frontal_ratio: measurable ? gaze?.frontal_ratio ?? null : null,
