@@ -61,12 +61,22 @@ def test_api_loop_through_real_graph(client, monkeypatch):
     """모드 real: 서류 분석·평가를 스텁으로 바꿔 API 한 바퀴가 진짜 그래프 경로로 도는지 확인한다."""
     from app.graph.mock_data import load
     from app.nodes.prep.analysis import AnalysisReport
-    from app.schemas.state import Analysis
+    from app.schemas.state import Analysis, Question
 
     monkeypatch.setenv("INTERVIEW_GRAPH_MODE", "real")
     monkeypatch.setattr(prepare, "get_llm", lambda: object())
     monkeypatch.setattr(evaluate, "get_llm", lambda: object())
-    monkeypatch.setattr(prepare, "run_analysis", lambda llm, *a, on_step=None, **k: AnalysisReport(analysis=Analysis()))
+    monkeypatch.setattr(prepare, "run_analysis", lambda llm, *a, on_step=None, **k: AnalysisReport(
+        analysis=Analysis(),
+        competency_questions=[
+            Question(question_id="Q-2", order=2, type="BEHAVIOR", text="역량 질문 1"),
+            Question(question_id="Q-3", order=3, type="BEHAVIOR", text="역량 질문 2"),
+        ],
+        technical_questions=[
+            Question(question_id="Q-4", order=4, type="TECH", text="기술 질문 1"),
+            Question(question_id="Q-5", order=5, type="TECH", text="기술 질문 2"),
+        ],
+    ))
     monkeypatch.setattr(evaluate, "evaluate_state", lambda state, llm, on_step=None, **k: load("report.json"))
 
     sid = client.post("/api/interviews", data=dict(resume_text="a", job_posting_text="b", job_description_text="c",
