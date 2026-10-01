@@ -1,14 +1,10 @@
-"""준비 그래프: 서류 분석(A) → 질문 준비 → READY.
-
-질문 생성(B)은 아직 없어서 questions·review 단계는 shared/mock의 질문 5개로 채운다(임시).
-B 노드가 합류하면 _temp_questions() 호출만 바꾼다."""
+"""준비 그래프: 서류 분석과 질문 생성 → READY."""
 import logging
 
 from ..nodes.prep.analysis import run_analysis
-from ..schemas.state import Question, SessionStatus, Step, StepState
+from ..schemas.state import Question, QuestionType, SessionStatus, Step, StepState
 from ..store import Store
 from .llm_factory import get_llm
-from .mock_data import load
 
 log = logging.getLogger(__name__)
 
@@ -17,13 +13,18 @@ STEPS = [
     ("read_resume", "이력서·자소서 읽는 중"),
     ("link", "공고와 경험 연결 중"),
     ("checkpoints", "검증 포인트 찾는 중"),
-    ("questions", "질문 준비 중"),
-    ("review", "질문 검수 중"),
+    ("competency_questions", "직무 적합 인성 질문 고르는 중"),
+    ("technical_questions", "기술 면접 질문 만드는 중"),
 ]
 
 
-def _temp_questions() -> list[Question]:
-    return [Question(**q) for q in load("session_ready.json")["questions"]]
+def _intro_question() -> Question:
+    return Question(
+        question_id="Q-1",
+        order=1,
+        type=QuestionType.INTRO,
+        text="1분 정도로 자기소개를 해 주세요. 지원 직무와 관련된 경험을 중심으로 말씀해 주세요.",
+    )
 
 
 def _set_step(record, store: Store, step_id: str, state: str, detail: str | None = None) -> None:
@@ -56,12 +57,11 @@ def run_prepare(store: Store, session_id: str, llm=None) -> None:
 
         with store.lock:
             record.state.analysis = report.analysis
-        _set_step(record, store, "questions", "RUNNING")
-        questions = _temp_questions()
-        _set_step(record, store, "questions", "DONE", "임시 질문 5개")
-        _set_step(record, store, "review", "DONE")
+            record.state.questions = sorted(
+                [_intro_question(), *report.competency_questions, *report.technical_questions],
+                key=lambda question: question.order,
+            )
         with store.lock:
-            record.state.questions = questions
             record.state.status = SessionStatus.READY
     except Exception as e:
         log.exception("준비 그래프 실패")

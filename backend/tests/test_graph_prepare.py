@@ -2,7 +2,7 @@ import pytest
 
 from app.graph import prepare
 from app.nodes.prep.analysis import AnalysisReport
-from app.schemas.state import Analysis, Claim, Requirement, SessionStatus, StepState
+from app.schemas.state import Analysis, Claim, Question, Requirement, SessionStatus, StepState
 from app.store import Store
 
 SECRET = "비밀서류원문ZZZ"
@@ -16,7 +16,7 @@ def make_record():
 
 def fake_analysis(seen=None):
     def run(llm, resume, posting, jd, cover, on_step=None):
-        for step in ("read_posting", "read_resume", "link", "checkpoints"):
+        for step in ("read_posting", "read_resume", "link", "checkpoints", "competency_questions", "technical_questions"):
             on_step(step, "RUNNING", None)
             if seen is not None:
                 seen.append(step)
@@ -25,7 +25,17 @@ def fake_analysis(seen=None):
             requirements=[Requirement(requirement_id="RQ-001", text="LangGraph 경험", source_doc="job_posting", kind="SKILL")],
             claims=[Claim(claim_id="CL-001", source_doc="resume", text="RAG 정확도 20% 개선")],
         )
-        return AnalysisReport(analysis=analysis)
+        return AnalysisReport(
+            analysis=analysis,
+            competency_questions=[
+                Question(question_id="Q-2", order=2, type="BEHAVIOR", text="역량 질문 1"),
+                Question(question_id="Q-3", order=3, type="BEHAVIOR", text="역량 질문 2"),
+            ],
+            technical_questions=[
+                Question(question_id="Q-4", order=4, type="TECH", text="기술 질문 1"),
+                Question(question_id="Q-5", order=5, type="TECH", text="기술 질문 2"),
+            ],
+        )
     return run
 
 
@@ -35,11 +45,14 @@ def test_prepare_success(monkeypatch):
     prepare.run_prepare(store, sid, llm=object())
     s = rec.state
     assert s.status == SessionStatus.READY
-    assert [x.step_id for x in s.steps] == ["read_posting", "read_resume", "link", "checkpoints", "questions", "review"]
+    assert [x.step_id for x in s.steps] == [
+        "read_posting", "read_resume", "link", "checkpoints", "competency_questions", "technical_questions",
+    ]
     assert all(x.state == StepState.DONE for x in s.steps)
     assert s.analysis.requirements[0].requirement_id == "RQ-001"
     assert [q.question_id for q in s.questions] == ["Q-1", "Q-2", "Q-3", "Q-4", "Q-5"]
     assert [q.type.value for q in s.questions] == ["INTRO", "BEHAVIOR", "BEHAVIOR", "TECH", "TECH"]
+    assert [q.text for q in s.questions[1:]] == ["역량 질문 1", "역량 질문 2", "기술 질문 1", "기술 질문 2"]
 
 
 def test_prepare_passes_documents_in_order(monkeypatch):
@@ -48,7 +61,17 @@ def test_prepare_passes_documents_in_order(monkeypatch):
 
     def run(llm, resume, posting, jd, cover, on_step=None):
         got.update(resume=resume, posting=posting, jd=jd, cover=cover)
-        return AnalysisReport(analysis=Analysis())
+        return AnalysisReport(
+            analysis=Analysis(),
+            competency_questions=[
+                Question(question_id="Q-2", order=2, type="BEHAVIOR", text="역량 질문 1"),
+                Question(question_id="Q-3", order=3, type="BEHAVIOR", text="역량 질문 2"),
+            ],
+            technical_questions=[
+                Question(question_id="Q-4", order=4, type="TECH", text="기술 질문 1"),
+                Question(question_id="Q-5", order=5, type="TECH", text="기술 질문 2"),
+            ],
+        )
 
     monkeypatch.setattr(prepare, "run_analysis", run)
     prepare.run_prepare(store, sid, llm=object())
