@@ -5,6 +5,21 @@ interface ApiRequestOptions {
   retryCount?: number;
 }
 
+/** docs/04의 오류 응답 {"error": {"code", "message", "field"}}을 그대로 보존합니다. */
+export class ApiError extends Error {
+  status: number;
+  code: string | undefined;
+  field: string | undefined;
+
+  constructor(message: string, status: number, code?: string, field?: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+    this.field = field;
+  }
+}
+
 /** 네트워크 오류와 5xx만 지정 횟수만큼 재시도합니다. */
 export async function apiRequest<T>(path: string, init?: RequestInit, options: ApiRequestOptions = {}): Promise<T> {
   const retryCount = options.retryCount ?? 0;
@@ -23,10 +38,15 @@ export async function apiRequest<T>(path: string, init?: RequestInit, options: A
     if (response.ok) return response.json() as Promise<T>;
 
     const body = await response.json().catch(() => null) as {
-      error?: { message?: string };
+      error?: { code?: string; message?: string; field?: string };
       detail?: string;
     } | null;
-    lastError = new Error(body?.error?.message ?? body?.detail ?? `API request failed: ${response.status}`);
+    lastError = new ApiError(
+      body?.error?.message ?? body?.detail ?? `API request failed: ${response.status}`,
+      response.status,
+      body?.error?.code,
+      body?.error?.field,
+    );
     if (response.status >= 500 && attempt < retryCount) continue;
     throw lastError;
   }
