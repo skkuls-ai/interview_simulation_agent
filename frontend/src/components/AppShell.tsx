@@ -12,9 +12,9 @@ export function AppShell({ title, description, children }: AppShellProps) {
     <div className="app-shell">
       <header className="app-header">
         <div className="header-inner">
-          <a className="brand" href="/" aria-label="Interview Simulation 홈">
+          <a className="brand" href="/" aria-label="면까몰 홈">
             <span className="brand-mark"><ScanFace size={18} strokeWidth={2.2} /></span>
-            <span>Interview Simulation</span>
+            <span>면까몰</span>
           </a>
           <div className="privacy-note">
             <ShieldCheck size={16} />
