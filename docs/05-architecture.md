@@ -62,37 +62,38 @@ flowchart LR
 
 ## 2. 준비 파이프라인 (READY까지)
 
-POST /api/interviews 이후 백그라운드로 실행. steps 6개가 화면 3의 진행 표시가 된다. 담당: A(분석), B(질문), C(그래프 연결).
+POST /api/interviews 이후 백그라운드로 실행. 그림의 6개 단계(read_posting ~ technical_questions)가 화면 3의 진행 표시가 된다. 담당: A(분석), B(질문), C(그래프 연결).
 
 ```mermaid
 flowchart TD
-    IN["서류 4종 텍스트 추출 (코드, A)"] --> P1
-    P1["read_posting 공고·직무기술서 분석 (LLM)<br/>요구사항 RQ, 인재상 TALENT"] --> P2
-    P2["read_resume 이력서·자소서 분석 (LLM)<br/>주장 Claim"] --> ID
-    ID["ID 발급 · 원문 포함 검사 (코드)<br/>RQ-, CL-, CP-"] --> P3
-    P3["link 요구사항과 경험 연결 (LLM)<br/>RequirementLink"] --> P4
-    P4["checkpoints 검증 포인트 찾기 (LLM)<br/>Checkpoint"] --> P5
-    P5["questions 질문 준비 (LLM)<br/>자기소개 1 · 인성 2 · 기술 2"] --> P6
-    P6["review 질문 검수 (코드 검증)<br/>ID 존재 · 고정 순서 · 은행 ID"] --> READY
-    BANK[("질문 은행 JSON<br/>기술·인성 각 10개")] --> P5
-    READY["status = READY"]
-    P6 -.->|"실패 시 1회 재시도, 이후 fallback"| P5
+    IN["서류 4종 텍스트 추출 (코드, A)<br/>POST 요청 안에서 처리 · 실패 시 422"] --> P1
+    IN --> P2
+    P1["read_posting 공고·직무기술서 분석 (LLM)<br/>요구사항 RQ, 인재상 TALENT"] --> ID
+    P2["read_resume 이력서·자소서 분석 (LLM)<br/>주장 Claim (동시에 실행)"] --> ID
+    ID["ID 발급 · 원문 포함 검사 (코드)<br/>LLM 실패 시 대체값으로 진행"] --> P3
+    P3["link 요구사항과 경험 연결 (LLM)"] --> P4
+    P4["checkpoints 검증 포인트 찾기 (LLM)"] --> Q2
+    BANK[("질문 은행 xlsx<br/>잡다 제공 150선")] --> Q2
+    Q2["competency_questions 인성 질문 2개 선택<br/>(LLM + 코드 검증)"] --> Q3
+    Q3["technical_questions 기술 질문 2개 생성<br/>(LLM + 코드 검증, 최대 2회 시도)"] --> READY
+    READY["Q-1 자기소개(고정 문구) + 인성 2 + 기술 2<br/>질문 5개 정렬 → status = READY"]
+    Q3 -.->|"예외 시 status = FAILED"| FAIL["FAILED"]
 ```
 
 ## 3. 평가 파이프라인 (COMPLETED까지)
 
-마지막 답변과 STT 변환이 모두 끝난 뒤 시작(C↔E 조율 항목). steps 5개가 화면 6의 진행 표시.
+마지막 답변과 STT 변환이 모두 끝난 뒤 시작한다. steps 5개(transcribe ~ compose)는 화면 6의 진행 표시이고, 실제 실행 순서는 아래 그림과 같다(`nodes/evaluate/runner.py`).
 
 ```mermaid
 flowchart TD
     S0["마지막(Q-5) 답변 수신 → status = EVALUATING"] --> T
-    T["transcribe 모든 답변 변환 완료 대기 (STT 백그라운드)"] --> CALC
-    CALC["코드 계산: 답변 시간 · 분당 단어 수 · 군말 횟수 · 시선 집계 · 초과 횟수"] --> A1
-    A1["attitude 태도 (LLM 조언 문장 생성)"] --> A2
-    A2["job_fit 직무 적합성 (LLM 관찰·판정 후보)"] --> A3
-    A3["consistency 답변 일관성 (LLM 관찰·판정 후보)"] --> QV
-    QV["코드 검증: 인용이 답변 원문에 있는지 · 위치(start, end) 재계산 · QT- 발급 · 없는 인용 제거 · 판정 집계"] --> C
-    C["compose 피드백 정리 (코드가 Report 조립)"] --> DONE
+    T["transcribe 답변 변환 완료 대기<br/>최대 30초, 넘으면 남은 답변은 FAILED"] --> CALC
+    CALC["코드 계산: 답변 시간 · 분당 단어 수 · 군말 · 시선 집계 · 초과 횟수"] --> PAR
+    PAR["LLM 호출 4개 동시 실행 (E)<br/>태도 조언 · 직무 적합성 · 답변 일관성 · 질문별 피드백"] --> RV
+    RV["코드 검증: 인용이 원문에 있는지 · 위치 재계산<br/>refs · 금지 표현 · 근거 없는 판정"] --> VA
+    VA["검증 에이전트 1회 (직무 적합성·일관성만)<br/>15초 안에 답이 없으면 코드 검증 결과로 진행"] --> C
+    VA -.->|"무효인 호출만 1회 재평가"| PAR
+    C["compose: QT- 발급 · 없는 인용 제거 · 판정 집계(근거 없으면 WITHHELD)<br/>코드가 Report 조립 · ReportResponse 검증"] --> DONE
     DONE["status = COMPLETED"]
 ```
 
@@ -119,7 +120,7 @@ sequenceDiagram
         API->>S: 백그라운드 STT
     end
     API->>G: 평가 그래프 (변환 완료 후)
-    G->>L: 태도 조언·직무 적합성·일관성
+    G->>L: 태도 조언·직무 적합성·일관성·질문별 피드백 (동시 호출), 검증
     loop 2초 간격
         U->>API: GET /api/interviews/id (EVALUATING)
         API-->>U: steps
@@ -149,10 +150,10 @@ sequenceDiagram
     AU->>STT: 음성 파일 변환 (답변 종료 후 파일 방식)
     alt 변환 성공
         STT-->>AU: transcript
-        AU->>ST: transcript, DONE, 분당 단어 수·군말 횟수(코드)
-    else 무음
+        AU->>ST: transcript, DONE
+    else 무음 또는 audio 없음 (마이크 끊김)
         AU->>ST: NO_SPEECH
-    else 실패 또는 audio 없음
+    else 변환 실패
         AU->>ST: FAILED
     end
     AU->>AU: 음성 파일 삭제 (성공·실패 모두)
@@ -160,7 +161,7 @@ sequenceDiagram
 
 - 영상은 서버로 보내지 않는다. 시선 측정값만 `delivery_metrics`로 전송(점수 미반영).
 - Live 스트리밍은 하지 않는다(확정). 새로고침하면 세션을 버린다(확정).
-- 삭제 시점은 「변환 후」(확정)이며, 실패 시 파일을 남길지는 Docs에 명시가 없다(확인 필요).
+- 삭제 시점은 「변환 후」(확정)이며, 변환 성공·무음·실패 모두 파일을 삭제한다(구현·테스트됨). 분당 단어 수·군말 횟수는 평가 단계에서 코드가 transcript로 계산한다.
 
 ## 6. 책임 경계 표
 
@@ -196,19 +197,18 @@ sequenceDiagram
 
 ## 9. 실행 환경 (Docker)
 
-개발은 로컬 Docker(`docker compose`)로 한다. 발표는 사전 녹화한 시연 영상을 쓰므로 터널은 쓰지 않는다. (확정) 브라우저는 `localhost` 또는 HTTPS에서만 마이크·카메라를 허용하므로, 로컬 개발에는 HTTPS가 필요 없고 발표 때만 터널이 필요하다.
+개발은 로컬 Docker(`docker compose`)로 한다. 발표는 사전 녹화한 시연 영상을 쓰므로 터널은 쓰지 않는다. (확정) 브라우저는 `localhost` 또는 HTTPS에서만 마이크·카메라를 허용하므로, 로컬 실행에는 HTTPS가 필요 없다.
 
 ```mermaid
 flowchart LR
-    B["브라우저"] -->|"localhost 또는 터널 HTTPS"| FE["frontend 컨테이너<br/>정적 파일 + /api 프록시"]
+    B["브라우저"] -->|"localhost"| FE["frontend 컨테이너<br/>정적 파일 + /api 프록시"]
     FE -->|"/api"| BE["backend 컨테이너<br/>FastAPI, 워커 1개"]
     BE --> LLM["외부 LLM·STT"]
-    T["터널 (발표 때만)"] -.-> FE
 ```
 
 | 항목 | 규칙 |
 |---|---|
-| 접속 주소 | 프런트 컨테이너가 `/api`를 백엔드로 프록시해 주소를 하나로 만든다. 터널은 프런트 포트 하나만 연다. CORS 문제도 줄어든다. (구현됨) |
+| 접속 주소 | 프런트 컨테이너가 `/api`를 백엔드로 프록시해 주소를 하나로 만든다. 필요하면 터널도 프런트 포트 하나만 열면 된다. CORS 문제도 줄어든다. (구현됨) |
 | 세션 메모리 | 백엔드 워커는 1개, 컨테이너도 1개로 고정한다. 여러 개면 세션이 서로 보이지 않는다. 컨테이너를 재시작하면 세션이 사라진다(허용). (구현됨) |
 | 음성 임시 파일 | 컨테이너 임시 폴더에 두고 STT 후 삭제한다. 볼륨은 만들지 않는다. (구현됨) |
 | LLM 인증 | 컨테이너 안에는 개인 gcloud 로그인이 없다. `.env`의 API 키(`GEMINI_API_KEY`)를 `env_file`로 런타임에 주입하고, 이미지와 저장소에는 넣지 않는다. |
