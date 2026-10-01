@@ -9,6 +9,7 @@ import { InterviewScreen, type CapturedAnswer } from "../pages/InterviewScreen";
 import { ResultScreen } from "../pages/ResultScreen";
 import { SetupScreen } from "../pages/SetupScreen";
 import { StartScreen } from "../pages/StartScreen";
+import { ApiError } from "../api/client";
 import { createSession, getReport, submitAnswer, type InterviewStatusResponse } from "../api/interview";
 import { toInterviewResult } from "../api/reportAdapter";
 import type { AppStep, InterviewQuestion, InterviewResult, SessionSetup } from "../types/interview";
@@ -54,7 +55,16 @@ export function App() {
   const completeAnswer = async (answer: CapturedAnswer) => {
     const question = questions[questionIndex];
     if (!USE_MOCK && sessionId) {
-      await submitAnswer(sessionId, { question_id: question.question_id, ...answer });
+      try {
+        await submitAnswer(sessionId, { question_id: question.question_id, ...answer });
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 404) {
+          window.alert("서버에서 면접 정보를 찾을 수 없습니다. 처음부터 다시 시작해 주세요.");
+          goToUpload();
+          return;
+        }
+        throw error;
+      }
     }
     if (questionIndex < questions.length - 1) {
       setQuestionIndex((index) => index + 1);
