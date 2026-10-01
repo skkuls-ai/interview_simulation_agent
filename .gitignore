@@ -15,6 +15,7 @@ dist/
 # 저작권 원본 자료 (재배포 금지)
 data/private/
 *.xlsx
+!backend/app/banks/*.xlsx
 
 # OS
 .DS_Store
