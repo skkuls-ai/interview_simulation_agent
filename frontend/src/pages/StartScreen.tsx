@@ -80,10 +80,10 @@ export function StartScreen({ onStart }: StartScreenProps) {
         </div>
 
         <div className="start-copy">
-          <h1><span>면접을 위한,</span><span>가장 확실한 연습.</span></h1>
-          <p>내 경험에서 시작한 질문에 직접 답하며,<br className="desktop-break" /> 실전에서 꺼내 쓸 답변을 준비하세요.</p>
+          <h1>면까몰</h1>
+          <p className="hero-tagline">면접은 까보기 전에 모른다.</p>
           <button className="button button-primary start-button" type="button" onClick={onStart}>
-            면접 연습 시작하기 <ArrowRight size={17} />
+            면접 까러가기 <ArrowRight size={17} />
           </button>
         </div>
       </section>

@@ -509,14 +509,21 @@ h1, h2, p { margin-top: 0; }
 }
 
 .start-copy h1 {
-  margin-bottom: 32px;
-  display: grid;
-  gap: 18px;
-  font-size: clamp(54px, 6vw, 86px);
-  line-height: .98;
-  letter-spacing: -.058em;
-  text-wrap: balance;
+  margin-bottom: 20px;
+  font-size: clamp(76px, 10vw, 148px);
+  line-height: 1;
+  letter-spacing: -.06em;
   word-break: keep-all;
+}
+
+.start-copy .hero-tagline {
+  max-width: none;
+  margin: 0 auto 44px;
+  color: #3a3a38;
+  font-size: clamp(28px, 3.4vw, 48px);
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: -.035em;
 }
 
 .start-copy p {
@@ -746,8 +753,8 @@ h1, h2, p { margin-top: 0; }
   .start-hero { width: calc(100% - 32px); min-height: calc(100svh - 66px); }
   .start-copy { width: 100%; padding: 112px 4px 126px; }
   .hero-kicker { margin-bottom: 22px; font-size: 9px; }
-  .start-copy h1 { margin-bottom: 25px; gap: 10px; font-size: clamp(42px, 13vw, 56px); line-height: 1.03; }
-  .start-copy p { font-size: 15px; }
+  .start-copy h1 { margin-bottom: 16px; font-size: clamp(64px, 22vw, 96px); }
+  .start-copy .hero-tagline { margin-bottom: 36px; font-size: 23px; }
   .desktop-break { display: none; }
   .start-button { min-height: 52px; padding-inline: 23px; }
   .competency-tile-body { width: 54px; height: 54px; border-radius: 17px; box-shadow: 0 12px 28px rgba(20,20,20,.08); }
