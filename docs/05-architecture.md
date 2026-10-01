@@ -1,25 +1,27 @@
 # 05. 아키텍처
 
-한 줄 요약: 프런트(React+Vite 가정) - FastAPI - 준비·평가 그래프 - 외부 LLM/STT(/TTS) 구성과, LLM은 관찰·생성만 하고 코드가 계산·검증하는 책임 경계.
-기준: Claude Docs 2026-09-29 버전 (「개발 계약·담당표」 탭, 「화면별 기능정의서」 탭)
+한 줄 요약: 프런트(React+Vite) - FastAPI - 준비·평가 그래프 - 외부 LLM/STT(Gemini) 구성과, LLM은 관찰·생성만 하고 코드가 계산·검증하는 책임 경계.
+기준: 2026-10-01 구현 기준 (원본: Claude Docs 2026-09-29 버전)
+
+구현 반영: 본문의 「미정」·「(제안)」은 기획 단계 표시다. 구현에서 해결·채택된 내용은 각 문서의 「결정 결과」 절과 [docs/README.md](README.md)의 구현 현황이 우선한다.
 
 관련 문서: docs/01-PRD.md, docs/02-screen-flow.md, docs/03-functional-spec.md, docs/04-api-schema.md, docs/06-wbs-schedule.md, docs/07-dev-rules.md, docs/08-test-scenarios.md
 
-## 0. 미정 항목 (그림의 점선·주석)
+## 0. 결정 결과 (그림의 점선·주석이던 항목)
 
-| 항목 | 상태 | 표기 |
-|---|---|---|
-| 질문 음성(TTS): 브라우저 기능 vs 서버 모델(Vertex AI TTS) | 미정. 서버면 음성 반환 API가 필요해 API가 5개가 됨 | 점선 |
-| LLM·STT 제공사와 모델명 | 미정. 학교 GCP Vertex AI를 쓸 수 있을 예정이나 모델명은 콘솔에서 확인 후 확정 | 점선, 「제공사 미정」 |
-| 프런트 스택 | React + Vite 가정(초안) | 「가정」 표기 |
-| 세션 저장소 | 확정: 서버 메모리, 재시작 시 소실 허용 | 실선 |
-| 실행 환경 | 확정: 개발은 로컬 Docker, 발표 때만 터널로 HTTPS 주소 공개 (9절) | 실선 |
+| 항목 | 결과 |
+|---|---|
+| 질문 음성(TTS) | 확정: 브라우저 `speechSynthesis`. 서버 TTS와 5번째 API 없음 |
+| LLM·STT 제공사와 모델명 | 확정: Gemini(`gemini-3.8-flash`, 역할별로 `INTERVIEW_MODEL_<역할>`로 교체 가능). 연결은 Vertex AI 또는 API 키. 학교 Vertex 호출 한도는 미확인 |
+| 프런트 스택 | 확정: React + Vite + TypeScript |
+| 세션 저장소 | 확정: 서버 메모리, 재시작 시 소실 허용 |
+| 실행 환경 | 개발은 로컬 Docker. 발표는 **사전 녹화한 시연 영상**을 쓰므로 터널은 사용하지 않는다 |
 
 ## 1. 시스템 구성도
 
 ```mermaid
 flowchart LR
-    subgraph FE["프런트엔드 (React + Vite 가정)"]
+    subgraph FE["프런트엔드 (React + Vite + TypeScript)"]
         UI["화면 1~7"]
         MEDIA["녹음 · 카메라 시선 측정<br/>영상은 서버로 보내지 않음"]
         CLIENT["api/client.ts<br/>VITE_USE_MOCK 전환"]
@@ -30,15 +32,14 @@ flowchart LR
         GRAPH["graph/ 준비 그래프 · 평가 그래프"]
         AUDIO["audio/ 받은 녹음 → STT → 파일 삭제"]
         VAL["validators/ 질문·인용 코드 검증"]
-        BANK[("banks/ 질문 은행 JSON")]
+        BANK[("banks/ 인성 질문 은행 xlsx")]
         STORE[("세션 저장소<br/>서버 메모리 InterviewState")]
     end
-    subgraph EXT["외부 서비스 (제공사·모델 미정)"]
-        LLM["LLM<br/>학교 GCP Vertex AI 예정"]
-        STT["STT 파일 변환"]
-        TTS["서버 TTS"]
+    subgraph EXT["외부 서비스 (Gemini)"]
+        LLM["LLM<br/>gemini-3.8-flash"]
+        STT["STT 파일 변환<br/>Gemini 오디오 입력"]
     end
-    BTTS["브라우저 TTS"]
+    BTTS["브라우저 TTS<br/>speechSynthesis"]
 
     UI --> CLIENT
     CLIENT -->|"VITE_USE_MOCK=true"| MOCK
@@ -52,13 +53,12 @@ flowchart LR
     GRAPH --> VAL
     GRAPH --> LLM
     AUDIO --> STT
-    UI -.->|"미정: 질문 음성"| BTTS
-    UI -.->|"미정: 5번째 API 필요"| TTS
+    UI -->|"질문 음성"| BTTS
 ```
 
 - 프런트는 화면 5에서 질문 텍스트 표시와 음성 재생, 5초 대기, 녹음, 1분 30초 타이머, 시선 측정(정면 유지 비율·이탈 횟수)을 맡는다.
 - 백엔드는 API 4개, State 관리, 그래프 실행, 녹음 수신→STT→삭제를 맡는다.
-- 브라우저 TTS와 서버 TTS 둘 다 점선이다. 결정 전에는 프런트가 질문 텍스트를 항상 화면에 보여 TTS가 실패해도 진행할 수 있다(화면 5 예외).
+- 질문 음성은 브라우저 TTS로 확정했다(서버 TTS 없음). 프런트가 질문 텍스트를 항상 화면에 보여 TTS가 실패해도 진행할 수 있다(화면 5 예외).
 
 ## 2. 준비 파이프라인 (READY까지)
 
@@ -185,18 +185,18 @@ sequenceDiagram
 | D 면접 화면·전체 UI | (프런트 시선 계산) | 프런트 뼈대, api/client.ts, 4, 5 |
 | E 피드백 | nodes/evaluate (인용 검증 함수는 B의 validators를 호출) | 7 |
 
-## 8. 확인 필요
+## 8. 결정 결과 (확인 필요였던 항목)
 
-1. TTS 방식(브라우저 vs 서버)에 따라 API 개수와 프런트·백엔드 경계가 달라진다. 킥오프 결정 필요.
-2. LLM·STT 제공사, 모델, 호출 한도 미정. 그래프의 노드별 모델 분리 여부도 미정.
-3. 준비 파이프라인의 6개 단계(steps)와 그래프 노드의 대응, 「ID 발급」이 어느 step에 속하는지는 Docs에 명시가 없다. 위 그림은 ID 표(A가 만든다)를 근거로 배치한 추정이다.
-4. 평가 파이프라인 내부 순서(attitude → job_fit → consistency)는 steps 순서에서 읽은 것이며 병렬 실행 여부는 정해지지 않았다.
-5. 변환 실패 시 음성 파일 삭제 여부, 그리고 재시도·타임아웃 정책은 미정.
-6. 프런트 스택(React + Vite)은 가정이다.
+1. TTS: 브라우저 방식으로 확정, API 4개 유지.
+2. LLM·STT: Gemini로 확정. 노드별 모델·추론 수준은 `INTERVIEW_MODEL_<역할>`, `INTERVIEW_THINKING_<역할>`로 분리 가능.
+3. 준비 파이프라인 6단계는 서류 읽기(`read_posting`, `read_resume`), 연결(`link`), 검증 포인트(`checkpoints`), 인성 질문 선택(`competency_questions`), 기술 질문 생성(`technical_questions`)으로 구현되어 `graph/prepare.py`가 A의 `run_analysis` 진행 신호로 갱신한다.
+4. 평가 파이프라인은 E의 `evaluate_state`가 순서대로 한 번에 실행한다(병렬 아님). `steps`는 `transcribe` → `attitude` → `job_fit` → `consistency` → `compose` 순서로 표시한다.
+5. 변환 실패 시 음성 파일은 항상 삭제한다. 변환 한 건은 25초, 평가 시작 전 변환 대기는 최대 30초로 제한하고 초과분은 `FAILED`로 처리한다. 재시도 API는 없다.
+6. 프런트 스택은 React + Vite + TypeScript로 확정.
 
 ## 9. 실행 환경 (Docker)
 
-개발은 로컬 Docker(`docker compose`)로, 발표 때만 터널로 HTTPS 주소를 임시 공개한다. (확정) 브라우저는 `localhost` 또는 HTTPS에서만 마이크·카메라를 허용하므로, 로컬 개발에는 HTTPS가 필요 없고 발표 때만 터널이 필요하다.
+개발은 로컬 Docker(`docker compose`)로 한다. 발표는 사전 녹화한 시연 영상을 쓰므로 터널은 쓰지 않는다. (확정) 브라우저는 `localhost` 또는 HTTPS에서만 마이크·카메라를 허용하므로, 로컬 개발에는 HTTPS가 필요 없고 발표 때만 터널이 필요하다.
 
 ```mermaid
 flowchart LR
@@ -208,12 +208,12 @@ flowchart LR
 
 | 항목 | 규칙 |
 |---|---|
-| 접속 주소 | 프런트 컨테이너가 `/api`를 백엔드로 프록시해 주소를 하나로 만든다. 터널은 프런트 포트 하나만 연다. CORS 문제도 줄어든다. (제안) |
-| 세션 메모리 | 백엔드 워커는 1개, 컨테이너도 1개로 고정한다. 여러 개면 세션이 서로 보이지 않는다. 컨테이너를 재시작하면 세션이 사라진다(허용). (제안) |
-| 음성 임시 파일 | 컨테이너 임시 폴더에 두고 STT 후 삭제한다. 볼륨은 만들지 않는다. (제안) |
-| LLM 인증 | 컨테이너 안에는 개인 gcloud 로그인이 없다. 제공사 확정 후 키나 서비스 계정 키 파일을 런타임에 주입하고, 이미지와 저장소에는 넣지 않는다. (미정) |
+| 접속 주소 | 프런트 컨테이너가 `/api`를 백엔드로 프록시해 주소를 하나로 만든다. 터널은 프런트 포트 하나만 연다. CORS 문제도 줄어든다. (구현됨) |
+| 세션 메모리 | 백엔드 워커는 1개, 컨테이너도 1개로 고정한다. 여러 개면 세션이 서로 보이지 않는다. 컨테이너를 재시작하면 세션이 사라진다(허용). (구현됨) |
+| 음성 임시 파일 | 컨테이너 임시 폴더에 두고 STT 후 삭제한다. 볼륨은 만들지 않는다. (구현됨) |
+| LLM 인증 | 컨테이너 안에는 개인 gcloud 로그인이 없다. `.env`의 API 키(`GEMINI_API_KEY`)를 `env_file`로 런타임에 주입하고, 이미지와 저장소에는 넣지 않는다. |
 | 프런트 환경변수 | `VITE_*`는 빌드 시점 값이라 바꾸면 프런트 이미지를 다시 빌드해야 한다. ([docs/07-dev-rules.md](07-dev-rules.md) 7절) |
-| 터널 | 발표 전 리허설에서 터널 주소로 마이크·카메라가 허용되는지 확인한다. 주소는 실행마다 바뀔 수 있다. (제안) |
+| 터널 | 사용하지 않는다(사전 녹화 영상으로 발표). 필요하면 터널 주소로 마이크·카메라가 허용되는지 먼저 확인한다. |
 
 ## 10. 백엔드 폴더 구조와 실행
 
@@ -277,7 +277,7 @@ proof_interview/
 ### 백그라운드 작업과 실행
 
 - 준비 그래프, STT 변환, 평가 그래프는 응답을 보낸 뒤 FastAPI `BackgroundTasks`로 돌린다. (확정)
-- 세션은 메모리(`store.py`)에 있으므로 uvicorn 워커는 1개로 고정한다. (제안)
+- 세션은 메모리(`store.py`)에 있으므로 uvicorn 워커는 1개로 고정한다. (구현됨)
 
 ```bash
 uvicorn app.main:app --host 0.0.0.0 --port 8000

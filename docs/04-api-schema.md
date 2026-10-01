@@ -1,7 +1,9 @@
 # 04. API 명세·데이터 스키마
 
 한 줄 요약: API 4개의 요청·응답·오류, 세션 상태 전이, State 엔티티 ERD, ID 규칙을 한곳에 모은 개발 계약 요약.
-기준: Claude Docs 2026-09-29 버전 (「개발 계약·담당표」 탭, 「화면별 기능정의서」 탭)
+기준: 2026-10-01 구현 기준 (원본: Claude Docs 2026-09-29 버전)
+
+구현 반영: 본문의 「미정」·「(제안)」은 기획 단계 표시다. 구현에서 해결·채택된 내용은 각 문서의 「결정 결과」 절과 [docs/README.md](README.md)의 구현 현황이 우선한다.
 
 관련 문서: docs/01-PRD.md, docs/02-screen-flow.md, docs/03-functional-spec.md, docs/05-architecture.md, docs/06-wbs-schedule.md, docs/07-dev-rules.md, docs/08-test-scenarios.md
 예시 응답 JSON: shared/mock/ (README 참고)
@@ -292,19 +294,17 @@ erDiagram
 
 질문 고정 순서: Q-1 INTRO(자기소개), Q-2 BEHAVIOR(인성), Q-3 BEHAVIOR(인성), Q-4 TECH(기술), Q-5 TECH(기술).
 
-## 8. 확인 필요
+## 8. 결정 결과 (확인 필요였던 항목)
 
-Docs 안의 모순·빈틈. 임의로 메우지 않고 팀 확인을 기다린다.
-
-1. `FAILED` 재시도: 화면 3·6은 「다시 시도」 버튼과 「입력 서류 유지/답변 유지」를 요구하지만 재시도 API가 없다(API는 4개뿐). 화면 6의 재시도가 같은 세션 재평가인지 새 세션인지 미정.
-2. 「다시 연습하기」(같은 서류로 질문 재생성 후 화면 4로)에 대응하는 API가 없다. `POST /api/interviews`는 서류 4종을 다시 받는 형식이다.
-3. `GET /{id}` 응답의 `error` 필드는 State(`InterviewState`)에 없고 형식(code/message 여부)도 정의되지 않았다. `GET /{id}`, `GET /report`의 404 `SESSION_NOT_FOUND` 여부도 명시되지 않았다.
-4. `report.json`은 `Report` 모델에 `session_id`, `questions`, `requirements`, `claims`, `checkpoints`가 추가된 형태이며 응답용 모델은 `schemas/api.py`의 `ReportResponse`다. `requirements`는 `job_fit.refs`가 가리키는 요구사항만 담는다(확정).
-5. 요청 `delivery_metrics`(JSON 문자열)와 State `Answer.delivery`, 요청 `privacy_consent`와 State `consent_at`(서버가 시각 기록으로 추정), `words_per_min`/`filler_count`의 Should 여부가 이름·형식으로만 대응한다.
-6. `audio` 파일 형식은 webm이 예시로만 나오고 C↔D 조율 항목으로 남아 있다. 마이크가 끊겨 `audio`가 없을 때의 보내는 방식도 미정.
-7. 평가 시작 시점은 「마지막 답변과 STT 변환이 모두 끝난 뒤」인데, status는 마지막 답변 수신 즉시 `EVALUATING`이 된다. 변환 대기 중 상태 표시는 `steps[transcribe]`로 추정된다.
-8. 영역 판정 집계 규칙(질문 피드백이 영역 판정 `verdict`가 되는 방식)은 킥오프 미결. 판정 라벨은 화면정의서에서 「제안」(충분/보완 필요/미흡/판단 보류)이며 State 값은 SUFFICIENT/NEEDS_WORK/INSUFFICIENT/WITHHELD.
-9. 질문 음성(TTS)을 서버 모델로 하면 음성 반환 API가 필요해 API가 5개가 된다. 브라우저 TTS면 4개 유지(미정).
-10. `NO_SPEECH`/`FAILED` 질문의 `per_question` 피드백 내용과 `attitude.metrics.speech` 계산 제외 여부는 정의되지 않았다.
-11. `report.json` 예시의 `time.per_question`은 Docs에서 질문 1개만 보이는데 전체 5개인지 명시되지 않았다.
-12. 화면 3의 60초 초과 「다시 시도」 처리는 프런트 타이머인지 서버 FAILED 전환인지 명시되지 않았다.
+| # | 항목 | 결과 |
+|---|---|---|
+| 1 | `FAILED` 재시도 | 재시도 API 없음(4개 유지). 화면은 오류 안내와 「처음으로 돌아가기」 |
+| 2 | 「다시 연습하기」 | 대응 API 없음. 프런트가 화면 4로 이동(02 문서 9절 한계 참고) |
+| 3 | `GET /{id}`의 `error` | `error: str \| null`, `FAILED`일 때만. 서류·답변 원문은 담지 않는다(예: 「서류 분석 중 오류가 발생했습니다 (오류 종류)」). 없는 세션은 404 `SESSION_NOT_FOUND`(구현·테스트됨) |
+| 4 | `report` 모양 | `ReportResponse`(`schemas/api.py`)로 확정. `requirements`는 `job_fit.refs`가 가리키는 것만 |
+| 5 | `delivery_metrics`·`consent_at` | `delivery_metrics`는 JSON 문자열로 받아 `Answer.delivery`에 저장(형식이 틀려도 답변은 받음). `consent_at`은 서버가 세션 생성 시 기록. 분당 단어 수·군말은 구현 |
+| 6 | `audio` 형식 | webm(프런트 녹음). 마이크가 끊기면 `audio` 없이 전송하고 `NO_SPEECH`로 기록 |
+| 7 | 평가 시작 시점 | 마지막 답변 수신 즉시 `EVALUATING`, 변환이 끝나면 평가 시작(최대 30초 대기, 넘으면 남은 답변을 `FAILED` 처리). 그동안 `steps[transcribe]`가 진행 중으로 보인다 |
+| 8 | 영역 판정 집계 | 01 문서 9절 참고. 라벨은 `SUFFICIENT` / `NEEDS_WORK` / `INSUFFICIENT` / `WITHHELD` |
+| 9 | TTS | 브라우저 방식, API 4개 유지 |
+| 10, 11 | `NO_SPEECH`·`FAILED` 질문의 피드백, `time.per_question` 개수 | 미확인(구현 세부는 E 담당 코드 참고) |

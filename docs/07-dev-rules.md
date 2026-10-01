@@ -2,7 +2,7 @@
 
 > 한 줄 요약: `main`·`dev`·`feature/*` 브랜치로 일하고(PR은 `dev`로), `schemas/`·`shared/mock/`은 C 리뷰 후 머지하며, 실제 API가 없을 때는 `VITE_USE_MOCK=true`로 mock JSON을 써서 개발한다.
 >
-> 기준: Claude Docs 2026-09-29 버전
+> 기준: 2026-10-01 구현 기준 (원본: Claude Docs 2026-09-29 버전)
 >
 > 관련 문서: [docs/09-git-workflow.md](09-git-workflow.md) (브랜치·PR 절차) · [docs/06-wbs-schedule.md](06-wbs-schedule.md) · [docs/04-api-schema.md](04-api-schema.md) · [docs/05-architecture.md](05-architecture.md) · mock 파일 상세는 [shared/mock/README.md](../shared/mock/README.md)
 
