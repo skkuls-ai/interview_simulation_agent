@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+pydantic>=2
+python-multipart
+pytest
+httpx
+google-genai
+python-dotenv
+# 서류 텍스트 추출 (A)
+pypdf
+python-docx
+openpyxl
+# 테스트 전용 (한글 PDF 생성)
+reportlab

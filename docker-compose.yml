@@ -1,0 +1,21 @@
+services:
+  backend:
+    build: ./backend
+    env_file:
+      - path: .env
+        required: false
+    expose:
+      - "8000"
+    volumes:
+      # 키가 없을 때 쓰는 가짜 진행기(graph/fake.py)가 읽는 mock
+      - ./shared/mock:/srv/shared/mock:ro
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_USE_MOCK: ${VITE_USE_MOCK:-false}
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend

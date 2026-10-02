@@ -1,0 +1,10 @@
+.env*
+!.env.example
+*-key.json
+credentials*.json
+*.pem
+.git
+**/node_modules
+**/__pycache__
+**/dist
+.omc
